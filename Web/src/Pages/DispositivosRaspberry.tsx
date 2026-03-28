@@ -326,7 +326,7 @@ const DispositivosRaspberry = () => {
                     : ''}
                 textoConfirmar={excluindo ? 'Excluindo...' : 'Excluir'}
                 textoCancelar="Cancelar"
-                corHeader="laranja"
+				corHeader="vermelho"
             />
         </div>
     )
