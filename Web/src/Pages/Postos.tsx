@@ -17,6 +17,7 @@ interface Posto {
     toten_id: number
     serial?: string
     totem_nome?: string
+    data_criacao?: string
 }
 
 interface Sublinha {
@@ -110,6 +111,7 @@ const Postos = () => {
                     nome: p.nome,
                     sublinha_id: p.sublinha_id,
                     toten_id: p.dispositivo_id || 0,
+                    data_criacao: p.data_criacao,
                 }))
             )
         } catch {
@@ -359,21 +361,47 @@ const Postos = () => {
                                     </form>
                                 ) : (
                                     <div>
+                                        {/* Cabeçalho dentro de um container */}
+                                        <div className="px-4 py-2 bg-blue-50 rounded-md mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <span className="w-8" />
+                                                <div className="grid grid-cols-4 items-center w-full gap-4">
+                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide col-span-1">
+                                                        Posto
+                                                    </span>
+                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
+                                                        Linha/Sublinha
+                                                    </span>
+                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
+                                                        RFID
+                                                    </span>
+                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-8 col-span-1">
+                                                        Data Criação
+                                                    </span>
+                                                </div>
+                                                <div className="w-24" />
+                                            </div>
+                                        </div>
                                         {carregando ? (
                                             <div className="flex justify-center items-center py-12">
                                                 <p className="text-gray-500">Carregando postos...</p>
                                             </div>
                                         ) : postos.length > 0 ? (
                                             <div className="space-y-4">
-                                                {postosPaginaAtual.map((posto) => (
-                                                    <CardPosto
-                                                        key={posto.posto_id}
-                                                        posto={posto}
-                                                        nomeSublinha={obterNomeSublinha(posto.sublinha_id)}
-                                                        onRemoverPosto={() => handleExcluirPosto(posto)}
-                                                        onEditarPosto={() => handleEditarPosto(posto)}
-                                                    />
-                                                ))}
+                                                {postosPaginaAtual.map((posto) => {
+                                                    const dispositivo = totens.find(t => t.id === posto.toten_id)
+                                                    return (
+                                                        <CardPosto
+                                                            key={posto.posto_id}
+                                                            posto={posto}
+                                                            nomeSublinha={obterNomeSublinha(posto.sublinha_id)}
+                                                            dispositivoNome={dispositivo?.nome}
+                                                            dispositivoSerial={dispositivo?.serial}
+                                                            onRemoverPosto={() => handleExcluirPosto(posto)}
+                                                            onEditarPosto={() => handleEditarPosto(posto)}
+                                                        />
+                                                    )
+                                                })}
                                                 {postos.length > itensPorPagina && (
                                                     <Paginacao
                                                         totalItens={postos.length}
@@ -407,7 +435,7 @@ const Postos = () => {
                 mensagem="Tem certeza que deseja excluir este posto?"
                 textoConfirmar="Excluir"
                 textoCancelar="Cancelar"
-                corHeader="laranja"
+				corHeader="vermelho"
             />
 
             <ModalSucesso
