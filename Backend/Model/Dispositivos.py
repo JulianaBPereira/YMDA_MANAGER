@@ -8,5 +8,5 @@ class DispositivoRaspberry(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     serial_number = Column(String, nullable=False)
     nome = Column(String, nullable=False)
-    data_criacao = Column(DateTime, default=datetime)
+    data_criacao = Column(DateTime, default=datetime.utcnow)
     data_remocao = Column(DateTime, nullable=True)

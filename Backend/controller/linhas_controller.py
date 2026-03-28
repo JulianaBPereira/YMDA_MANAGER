@@ -56,6 +56,20 @@ def criar_com_sublinha(body: LinhaComSublinhaCreate, db: Session = Depends(get_d
 # Sublinha endpoints
 # ────────────────────────────────────────────────────────────────────────────────
 
+@router.get("/sublinhas", response_model=list[SublinhaResponse])
+def listar_sublinhas(db: Session = Depends(get_db)):
+    service = SublinhaService(SublinhasDAO(db))
+    sublinhas = service.listar_sublinhas()
+    return [
+        SublinhaResponse(
+            id=s.id,
+            nome=s.nome,
+            linha_id=s.linha_id,
+            linha_nome=getattr(getattr(s, "linha", None), "nome", None),
+        )
+        for s in sublinhas
+    ]
+
 @router.put("/sublinhas/{sublinha_id}", response_model=SublinhaResponse)
 def atualizar_sublinha(sublinha_id: int, body: SublinhaUpdate, db: Session = Depends(get_db)):
     service = SublinhaService(SublinhasDAO(db))

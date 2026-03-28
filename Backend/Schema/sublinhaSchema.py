@@ -1,5 +1,6 @@
 
 from pydantic import BaseModel
+from typing import Optional
 
 
 class SublinhaCreate(BaseModel):
@@ -16,6 +17,7 @@ class SublinhaResponse(BaseModel):
     id: int
     nome: str
     linha_id: int
+    linha_nome: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -9,5 +9,5 @@ class Posto(Base):
     nome = Column(String(255), nullable=False)
     sublinha_id = Column(Integer, ForeignKey('sublinhas.id'), nullable=False)
     dispositivo_id = Column(Integer, ForeignKey('dispositivos_raspberry.id'), nullable=True)
-    data_criacao = Column(DateTime, default=datetime)
+    data_criacao = Column(DateTime, default=datetime.utcnow)
     data_remocao = Column(DateTime, nullable=True)

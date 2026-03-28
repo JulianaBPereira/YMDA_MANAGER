@@ -6,6 +6,9 @@ import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
+import { listarSublinhas } from '../services/linhas'
+import { listarDispositivos } from '../services/dispositivos'
+import { listarPostos, criarPosto, atualizarPosto, deletarPosto } from '../services/postos'
 
 interface Posto {
     posto_id: number
@@ -59,17 +62,61 @@ const Postos = () => {
     }, [abaAtiva])
 
     const carregarSublinhas = async () => {
-        setSublinhas([])
+        try {
+            const subs = await listarSublinhas()
+            // normalizar para o shape local esperado
+            setSublinhas(
+                subs.map(s => ({
+                    sublinha_id: s.id,
+                    linha_id: s.linha_id,
+                    nome: s.nome,
+                    linha_nome: s.linha_nome,
+                }))
+            )
+            if (subs.length > 0) {
+                setSublinhaId(prev => prev || subs[0].id)
+            }
+        } catch {
+            setSublinhas([])
+        }
     }
 
     const carregarTotens = async () => {
-        setTotens([])
+        try {
+            const dispositivos = await listarDispositivos()
+            setTotens(
+                dispositivos.map(d => ({
+                    id: d.id,
+                    nome: d.nome,
+                    serial: d.serial_number,
+                    dispositivo_id: d.id,
+                }))
+            )
+            if (dispositivos.length > 0) {
+                setTotenId(prev => prev || dispositivos[0].id)
+            }
+        } catch {
+            setTotens([])
+        }
     }
 
     const carregarPostos = async () => {
         setCarregando(true)
-        setPostos([])
-        setCarregando(false)
+        try {
+            const resp = await listarPostos()
+            setPostos(
+                resp.map(p => ({
+                    posto_id: p.id,
+                    nome: p.nome,
+                    sublinha_id: p.sublinha_id,
+                    toten_id: p.dispositivo_id || 0,
+                }))
+            )
+        } catch {
+            setPostos([])
+        } finally {
+            setCarregando(false)
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -96,9 +143,34 @@ const Postos = () => {
             return
         }
 
-        setTituloErro('Indisponível')
-        setMensagemErro('Salvar/atualizar desabilitado enquanto o novo backend é construído.')
-        setModalErroAberto(true)
+        try {
+            if (postoEditando) {
+                await atualizarPosto(postoEditando.posto_id, {
+                    nome: nome.trim(),
+                    sublinha_id: sublinhaId,
+                    dispositivo_id: totenId || undefined,
+                })
+                setMensagemSucesso('Posto atualizado com sucesso!')
+                setModalSucessoAberto(true)
+                setPostoEditando(null)
+            } else {
+                await criarPosto({
+                    nome: nome.trim(),
+                    sublinha_id: sublinhaId,
+                    dispositivo_id: totenId || undefined,
+                })
+                setMensagemSucesso('Posto cadastrado com sucesso!')
+                setModalSucessoAberto(true)
+            }
+            setNome('')
+            if (sublinhas.length > 0) setSublinhaId(sublinhas[0].sublinha_id)
+            if (totens.length > 0) setTotenId(totens[0].id)
+            await carregarPostos()
+        } catch (e: any) {
+            setTituloErro('Erro!')
+            setMensagemErro(e?.message || 'Erro ao salvar posto')
+            setModalErroAberto(true)
+        }
     }
 
     const handleEditarPosto = (posto: Posto) => {
@@ -117,10 +189,18 @@ const Postos = () => {
     const handleConfirmarExclusao = async () => {
         if (!postoSelecionado) return
         
-        fecharModal()
-        setTituloErro('Indisponível')
-        setMensagemErro('Exclusão desabilitada enquanto o novo backend é construído.')
-        setModalErroAberto(true)
+        try {
+            await deletarPosto(postoSelecionado.posto_id)
+            fecharModal()
+            setMensagemSucesso('Posto excluído com sucesso!')
+            setModalSucessoAberto(true)
+            await carregarPostos()
+        } catch (e: any) {
+            fecharModal()
+            setTituloErro('Erro!')
+            setMensagemErro(e?.message || 'Erro ao excluir posto')
+            setModalErroAberto(true)
+        }
     }
 
     const fecharModal = () => {
@@ -152,7 +232,8 @@ const Postos = () => {
 
     const obterNomeSublinha = (sublinhaId: number) => {
         const sublinha = sublinhas.find(s => s.sublinha_id === sublinhaId)
-        return sublinha ? sublinha.nome : 'Não encontrada'
+        if (!sublinha) return 'Não encontrada'
+        return sublinha.linha_nome ? `${sublinha.linha_nome} - ${sublinha.nome}` : sublinha.nome
     }
 
     return (

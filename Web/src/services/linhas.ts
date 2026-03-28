@@ -10,6 +10,7 @@ export interface Sublinha {
     id: number
     nome: string
     linha_id: number
+    linha_nome?: string
 }
 
 export interface CriarLinhaData {
@@ -84,4 +85,11 @@ export async function atualizarSublinha(id: number, data: AtualizarSublinhaData)
 
 export async function deletarSublinha(id: number): Promise<void> {
     await fetchAPI(`/linhas/sublinhas/${id}`, { method: 'DELETE' })
+}
+
+// Listar sublinhas com nome da linha (para Postos)
+export async function listarSublinhas(): Promise<Sublinha[]> {
+    const dados = await fetchAPI('/linhas/sublinhas')
+    if (!Array.isArray(dados)) return []
+    return dados as Sublinha[]
 }
