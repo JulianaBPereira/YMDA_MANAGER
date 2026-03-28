@@ -149,7 +149,7 @@ const CardLinha: React.FC<CardLinhaProps> = ({
                                     {estaEditandoSublinha ? (
                                         <input
                                             type="text"
-                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none"
                                             value={nomeSublinhaEditando}
                                             onChange={(e) => onNomeSublinhaEditandoChange(e.target.value)}
                                             autoFocus

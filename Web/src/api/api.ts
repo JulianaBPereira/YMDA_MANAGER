@@ -45,7 +45,13 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
         : await response.text().catch(() => '')
 
     if (!response.ok) {
-        const errorMessage = (isJson && (data as any)?.erro) || (isJson && (data as any)?.error) || (isJson && (data as any)?.message) || `Erro ${response.status}`
+        const detail = isJson ? (data as any)?.detail : undefined
+        const errorMessage =
+            (isJson && (data as any)?.erro) ||
+            (isJson && (data as any)?.error) ||
+            (isJson && (data as any)?.message) ||
+            (typeof detail === 'string' ? detail : undefined) ||
+            `Erro ${response.status}`
         throw new Error(errorMessage)
     }
 

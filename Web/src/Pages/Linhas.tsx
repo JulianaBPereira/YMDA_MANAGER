@@ -6,8 +6,7 @@ import CardLinha from '../Components/Linhas/CardLinha'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { listarLinhas, atualizarLinha, deletarLinha } from '../services/linhas'
-import { fetchAPI } from '../api/api'
+import { listarLinhas, atualizarLinha, deletarLinha, atualizarSublinha, deletarSublinha, criarLinhaComSublinha } from '../services/linhas'
 
 
 interface Sublinha {
@@ -84,10 +83,7 @@ const Linhas = () => {
         }
 
         try {
-            await fetchAPI('/linhas/com-sublinha', {
-                method: 'POST',
-                body: JSON.stringify({ nome_linha: nomeLinha.trim(), nome_sublinha: nomeSublinha.trim() })
-            })
+            await criarLinhaComSublinha({ nome_linha: nomeLinha.trim(), nome_sublinha: nomeSublinha.trim() })
             setNomeLinha('')
             setNomeSublinha('')
             setMensagemSucesso('Linha e sublinha criadas com sucesso!')
@@ -113,6 +109,8 @@ const Linhas = () => {
             setModalConfirmacaoLinhaAberto(false)
             setLinhaIdParaExcluir(null)
             await carregarLinhas()
+            setMensagemSucesso('Linha excluída com sucesso!')
+            setModalSucessoAberto(true)
         } catch (e: any) {
             setModalConfirmacaoLinhaAberto(false)
             setLinhaIdParaExcluir(null)
@@ -130,12 +128,20 @@ const Linhas = () => {
     const confirmarExcluirSublinha = async () => {
         if (!sublinhaIdParaExcluir) return
 
-        // Backend antigo removido
-        setModalConfirmacaoSublinhaAberto(false)
-        setSublinhaIdParaExcluir(null)
-        setTituloErro('Indisponível')
-        setMensagemErro('Exclusão de sublinha desabilitada enquanto o novo backend é construído.')
-        setModalErroAberto(true)
+        try {
+            await deletarSublinha(sublinhaIdParaExcluir)
+            setModalConfirmacaoSublinhaAberto(false)
+            setSublinhaIdParaExcluir(null)
+            await carregarLinhas()
+            setMensagemSucesso('Sublinha excluída com sucesso!')
+            setModalSucessoAberto(true)
+        } catch (e: any) {
+            setModalConfirmacaoSublinhaAberto(false)
+            setSublinhaIdParaExcluir(null)
+            setTituloErro('Erro!')
+            setMensagemErro(e?.message || 'Erro ao excluir sublinha')
+            setModalErroAberto(true)
+        }
     }
 
     const handleIniciarEdicaoLinha = (linha: Linha) => {
@@ -185,10 +191,18 @@ const Linhas = () => {
             return
         }
 
-        // Backend antigo removido
-        setTituloErro('Indisponível')
-        setMensagemErro('Atualização de sublinha desabilitada enquanto o novo backend é construído.')
-        setModalErroAberto(true)
+        try {
+            await atualizarSublinha(sublinha.id, { nome: nomeSublinhaEditando.trim(), linha_id: sublinha.linha_id })
+            setSublinhaEditando(null)
+            setNomeSublinhaEditando('')
+            await carregarLinhas()
+            setMensagemSucesso('Sublinha atualizada com sucesso!')
+            setModalSucessoAberto(true)
+        } catch (e: any) {
+            setTituloErro('Erro!')
+            setMensagemErro(e?.message || 'Erro ao atualizar sublinha')
+            setModalErroAberto(true)
+        }
     }
 
     const handleCancelarEdicaoSublinha = () => {

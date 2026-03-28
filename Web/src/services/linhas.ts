@@ -6,6 +6,12 @@ export interface Linha {
     data_criacao?: string
 }
 
+export interface Sublinha {
+    id: number
+    nome: string
+    linha_id: number
+}
+
 export interface CriarLinhaData {
     nome: string
 }
@@ -17,6 +23,16 @@ export interface AtualizarLinhaData {
 export interface CriarLinhaComSublinhaData {
     nome_linha: string
     nome_sublinha: string
+}
+
+export interface CriarSublinhaData {
+    nome: string
+    linha_id: number
+}
+
+export interface AtualizarSublinhaData {
+    nome: string
+    linha_id: number
 }
 
 export async function listarLinhas(): Promise<Linha[]> {
@@ -48,4 +64,24 @@ export async function criarLinhaComSublinha(data: CriarLinhaComSublinhaData): Pr
         method: 'POST',
         body: JSON.stringify(data),
     })
+}
+
+// ─── Sublinhas ─────────────────────────────────────────────────────────────────
+
+export async function criarSublinha(data: CriarSublinhaData): Promise<Sublinha> {
+    return await fetchAPI('/linhas/sublinhas', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+}
+
+export async function atualizarSublinha(id: number, data: AtualizarSublinhaData): Promise<Sublinha> {
+    return await fetchAPI(`/linhas/sublinhas/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    })
+}
+
+export async function deletarSublinha(id: number): Promise<void> {
+    await fetchAPI(`/linhas/sublinhas/${id}`, { method: 'DELETE' })
 }
