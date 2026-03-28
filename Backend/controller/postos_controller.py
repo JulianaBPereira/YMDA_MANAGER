@@ -27,7 +27,11 @@ def buscar(posto_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=PostoResponse, status_code=201)
 def criar(body: PostoCreate, db: Session = Depends(get_db)):
     service = PostosService(PostosDAO(db))
-    return service.criar_posto(body.nome.strip(), body.sublinha_id, body.dispositivo_id)
+    try:
+        return service.criar_posto(body.nome.strip(), body.sublinha_id, body.dispositivo_id)
+    except ValueError as e:
+        # Conflito por duplicidade
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.put("/{posto_id}", response_model=PostoResponse)
@@ -41,7 +45,11 @@ def atualizar(posto_id: int, body: PostoUpdate, db: Session = Depends(get_db)):
             dispositivo_id=body.dispositivo_id,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        # Se mensagem indicar não encontrado -> 404, senão 409 por duplicidade
+        msg = str(e)
+        if "não encontrado" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=409, detail=msg)
 
 
 @router.delete("/{posto_id}", status_code=204)

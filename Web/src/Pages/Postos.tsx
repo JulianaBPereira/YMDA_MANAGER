@@ -145,10 +145,25 @@ const Postos = () => {
             return
         }
 
+        // Validação simples de duplicidade no cliente:
+        // sublinha + dispositivo devem ser únicos (independente do nome)
+        const nomeTrim = nome.trim()
+        const existeDuplicado = postos.some(p =>
+            p.sublinha_id === sublinhaId &&
+            p.toten_id === (totenId || 0) &&
+            (!postoEditando || p.posto_id !== postoEditando.posto_id)
+        )
+        if (existeDuplicado) {
+            setTituloErro('Duplicado')
+            setMensagemErro('Já existe um posto para esta sublinha e dispositivo.')
+            setModalErroAberto(true)
+            return
+        }
+
         try {
             if (postoEditando) {
                 await atualizarPosto(postoEditando.posto_id, {
-                    nome: nome.trim(),
+                    nome: nomeTrim,
                     sublinha_id: sublinhaId,
                     dispositivo_id: totenId || undefined,
                 })
@@ -157,7 +172,7 @@ const Postos = () => {
                 setPostoEditando(null)
             } else {
                 await criarPosto({
-                    nome: nome.trim(),
+                    nome: nomeTrim,
                     sublinha_id: sublinhaId,
                     dispositivo_id: totenId || undefined,
                 })
