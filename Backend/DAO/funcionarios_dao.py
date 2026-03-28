@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 from datetime import datetime
 from ..Model.Funcionarios import Funcionario, Turnos, FuncionarioTurnos
 
@@ -53,7 +54,11 @@ class FuncionariosDAO:
         return self.db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
 
     def listar(self):
-        return self.db.query(Funcionario).all()
+        return (
+            self.db.query(Funcionario)
+            .options(joinedload(Funcionario.turnos))
+            .all()
+        )
 
 
     def definir_tag_temporaria(self, funcionario_id: int, tag: str, expiracao: datetime):

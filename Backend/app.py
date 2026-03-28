@@ -9,6 +9,7 @@ from .Controller.dispositivos_controller import router as dispositivos_router
 from .Controller.registros_producao_controller import router as registros_router
 from .Controller.operacoes_controller import router as operacoes_router
 from .Controller.postos_controller import router as postos_router
+from .Controller.turnos_controller import router as turnos_router
 from .Database.database import SessionLocal
 from .DAO.dispositvos_dao import DispositivosDAO
 from .Services.dispositivos_service import DispositivosService
@@ -34,6 +35,7 @@ app.include_router(dispositivos_router, prefix="/api")
 app.include_router(registros_router, prefix="/api")
 app.include_router(operacoes_router, prefix="/api")
 app.include_router(postos_router, prefix="/api")
+app.include_router(turnos_router, prefix="/api")
 
 
 @app.on_event("startup")

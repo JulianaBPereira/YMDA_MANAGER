@@ -9,6 +9,7 @@ export interface RegistroProducao {
     data_fim?: string | null
     horario_fim?: string | null
     criado_em?: string
+    turno?: string | null
 }
 
 export interface CriarRegistroData {

@@ -11,6 +11,8 @@ import {
     type Turno,
     type AtualizarFuncionarioData,
     listarFuncionarios,
+    listarTurnos,
+    garantirTurnosPadrao,
     criarFuncionario,
     atualizarFuncionario,
     deletarFuncionario,
@@ -69,6 +71,18 @@ const Funcionarios = () => {
     const carregarFuncionarios = async () => {
         setCarregando(true)
         try {
+            // 1) Tenta carregar turnos por endpoint dedicado (se o backend fornecer)
+            let turnosApi = await listarTurnos()
+            if (turnosApi.length > 0) {
+                setTurnosDisponiveis(turnosApi.sort((a, b) => a.id - b.id))
+            } else {
+                // 1.b) Se não houver nenhum turno, cria os turnos padrão automaticamente
+                turnosApi = await garantirTurnosPadrao()
+                if (turnosApi.length > 0) {
+                    setTurnosDisponiveis(turnosApi.sort((a, b) => a.id - b.id))
+                }
+            }
+
             const dados = await listarFuncionarios()
             setFuncionarios(dados)
             const mapa = new Map<number, Turno>()
@@ -77,8 +91,18 @@ const Funcionarios = () => {
                     if (!mapa.has(t.id)) mapa.set(t.id, t)
                 }
             }
-            if (mapa.size > 0) {
+            // 2) Fallback: se não veio nada da API de turnos, extrai dos funcionários
+            if (mapa.size > 0 && turnosApi.length === 0) {
                 setTurnosDisponiveis(Array.from(mapa.values()).sort((a, b) => a.id - b.id))
+            }
+
+            // 3) Último recurso: se ainda não houver turnos, mostrar opções padrão no formulário
+            if (turnosApi.length === 0 && mapa.size === 0) {
+                setTurnosDisponiveis([
+                    { id: 1, nome: 'Matutino' },
+                    { id: 2, nome: 'Vespertino' },
+                    { id: 3, nome: 'Noturno' },
+                ])
             }
         } catch (error: any) {
             mostrarErro('Erro!', `Erro ao carregar funcionários: ${error?.message || 'Erro desconhecido'}`)
@@ -98,7 +122,20 @@ const Funcionarios = () => {
         if (turnosSelecionados.length === 0) return mostrarErro('Atenção!', 'Selecione pelo menos um turno.')
 
         try {
-            await criarFuncionario({ tag: tag.trim(), matricula, nome, ativo, turno_ids: turnosSelecionados })
+            const criado = await criarFuncionario({ tag: tag.trim(), matricula, nome, ativo, turno_ids: turnosSelecionados })
+
+            // Workaround: alguns backends podem ignorar turno_ids no POST.
+            // Se voltar sem turnos, tentamos atualizar em seguida para garantir a associação.
+            if (Array.isArray(criado?.turnos) ? criado.turnos.length === 0 : true) {
+                await atualizarFuncionario(criado.id, {
+                    tag: tag.trim(),
+                    matricula,
+                    nome,
+                    ativo,
+                    turno_ids: turnosSelecionados,
+                })
+            }
+
             setMatricula(''); setNome(''); setTag(''); setAtivo(true); setTurnosSelecionados([])
             if (abaAtiva === 'listar') await carregarFuncionarios()
             setTimeout(() => rfidInputRef.current?.focus(), 100)

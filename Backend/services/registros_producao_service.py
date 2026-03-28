@@ -9,13 +9,35 @@ class RegistroProducaoService:
 		self.dao = dao
 
 	def listar(self) -> list[RegistroProducao]:
-		return self.dao.listar_todos()
+		registros = self.dao.listar_todos()
+		# Enriquecer com campo 'turno' (primeiro turno do funcionário, se houver)
+		for r in registros:
+			try:
+				turnos = getattr(getattr(r, "funcionario", None), "turnos", []) or []
+				r.turno = turnos[0].nome if len(turnos) > 0 and getattr(turnos[0], "nome", None) else None
+			except Exception:
+				r.turno = None
+		return registros
 
 	def listar_em_aberto(self) -> list[RegistroProducao]:
-		return self.dao.listar_em_aberto()
+		registros = self.dao.listar_em_aberto()
+		for r in registros:
+			try:
+				turnos = getattr(getattr(r, "funcionario", None), "turnos", []) or []
+				r.turno = turnos[0].nome if len(turnos) > 0 and getattr(turnos[0], "nome", None) else None
+			except Exception:
+				r.turno = None
+		return registros
 
 	def buscar(self, registro_id: int) -> Optional[RegistroProducao]:
-		return self.dao.buscar_por_id(registro_id)
+		r = self.dao.buscar_por_id(registro_id)
+		if r:
+			try:
+				turnos = getattr(getattr(r, "funcionario", None), "turnos", []) or []
+				r.turno = turnos[0].nome if len(turnos) > 0 and getattr(turnos[0], "nome", None) else None
+			except Exception:
+				r.turno = None
+		return r
 
 	def criar(
 		self,

@@ -1,6 +1,6 @@
 from datetime import date, time
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from ..Model.RegistroProdução import RegistroProducao
 
 class RegistroProducaoDAO:
@@ -34,18 +34,30 @@ class RegistroProducaoDAO:
     def buscar_por_id(self, registro_id: int) -> Optional[RegistroProducao]:
         return (
             self.db.query(RegistroProducao)
+            .options(
+                joinedload(RegistroProducao.funcionario).joinedload("turnos")
+            )
             .filter(RegistroProducao.id == registro_id)
             .first()
         )
 
     def listar_todos(self) -> list[RegistroProducao]:
-        return self.db.query(RegistroProducao).all()
+        return (
+            self.db.query(RegistroProducao)
+            .options(
+                joinedload(RegistroProducao.funcionario).joinedload("turnos")
+            )
+            .all()
+        )
 
 
     def listar_em_aberto(self) -> list[RegistroProducao]:
         """Registros sem data_fim ou horario_fim definidos."""
         return (
             self.db.query(RegistroProducao)
+            .options(
+                joinedload(RegistroProducao.funcionario).joinedload("turnos")
+            )
             .filter(
                 (RegistroProducao.data_fim.is_(None))
                 | (RegistroProducao.horario_fim.is_(None))

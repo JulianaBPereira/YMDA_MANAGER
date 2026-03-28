@@ -32,6 +32,7 @@ class RegistroResponse(BaseModel):
 	data_fim: Optional[date] = None
 	horario_inicio: Optional[time] = None
 	horario_fim: Optional[time] = None
+	turno: Optional[str] = None
 
 	class Config:
 		from_attributes = True

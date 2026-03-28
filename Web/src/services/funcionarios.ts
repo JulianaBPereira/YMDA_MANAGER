@@ -39,6 +39,46 @@ export interface AtualizarFuncionarioData {
 
 // ─── Funções de serviço ───────────────────────────────────────────────────────
 
+// Tenta listar turnos por endpoint dedicado (se existir no backend)
+export async function listarTurnos(): Promise<Turno[]> {
+    try {
+        const dados = await fetchAPI('/turnos')
+        if (!Array.isArray(dados)) return []
+        return (dados as Array<{ id: number; nome: string }>).map(t => ({
+            id: Number(t.id),
+            nome: String(t.nome || ''),
+        }))
+    } catch {
+        // Se o endpoint não existir/retornar erro, devolve vazio e usamos fallback
+        return []
+    }
+}
+
+export async function criarTurno(nome: string): Promise<Turno | null> {
+    try {
+        const criado = await fetchAPI('/turnos', {
+            method: 'POST',
+            body: JSON.stringify({ nome }),
+        })
+        if (!criado || typeof criado !== 'object') return null
+        return { id: Number((criado as any).id), nome: String((criado as any).nome || nome) }
+    } catch {
+        return null
+    }
+}
+
+export async function garantirTurnosPadrao(): Promise<Turno[]> {
+    const existentes = await listarTurnos()
+    if (existentes.length > 0) return existentes
+
+    const padroes = ['Matutino', 'Vespertino', 'Noturno']
+    for (const nome of padroes) {
+        // Ignora erro individual; tenta criar todos
+        await criarTurno(nome)
+    }
+    return await listarTurnos()
+}
+
 // GET /funcionarios/
 export async function listarFuncionarios(): Promise<Funcionario[]> {
     const dados = await fetchAPI('/funcionarios')

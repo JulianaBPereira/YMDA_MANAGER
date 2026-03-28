@@ -132,6 +132,7 @@ const Registros = () => {
                     data_fim: r.data_fim || undefined,
                     hora_inicio: r.horario_inicio || undefined,
                     hora_fim: r.horario_fim || undefined,
+                    turno: r.turno || undefined,
                 }))
                 setRegistros(mapped)
                 setTotalRegistros(mapped.length)
