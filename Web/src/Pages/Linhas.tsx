@@ -19,6 +19,7 @@ interface Sublinha {
 interface Linha {
     id: number
     nome: string
+    data_criacao?: string
     sublinhas: Sublinha[]
 }
 
@@ -59,6 +60,7 @@ const Linhas = () => {
                 ? resp.map((l: any) => ({
                     id: l.id,
                     nome: l.nome,
+                    data_criacao: l.data_criacao,
                     sublinhas: Array.isArray(l.sublinhas) ? l.sublinhas : []
                 }))
                 : []
@@ -288,6 +290,24 @@ const Linhas = () => {
 
                                 {abaAtiva === 'listar' && (
                                     <div>
+                                        <div className="px-4 py-2 bg-gray-50 rounded-md">
+                                            <div className="flex items-center gap-3">
+                                                <span className="w-8" />
+                                                <div className="grid grid-cols-3 items-center w-full gap-4">
+                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide col-span-1">
+                                                        Linha
+                                                    </span>
+                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
+                                                        Data
+                                                    </span>
+                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-8 col-span-1">
+                                                        Qtd sublinha
+                                                    </span>
+                                                </div>
+                                                <div className="w-24" />
+                                            </div>
+                                        </div>
+
                                         {linhas.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center py-12">
                                                 <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
@@ -296,7 +316,7 @@ const Linhas = () => {
                                                 </p>
                                             </div>
                                         ) : (
-                                            <div className="space-y-4">
+                                            <div className="space-y-4 mt-2">
                                                 {linhasPaginaAtual.map((linha) => {
                                                     const estaExpandida = linhaExpandida === linha.id
                                                     const estaEditandoLinha = linhaEditando === linha.id

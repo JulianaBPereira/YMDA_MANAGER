@@ -1,5 +1,6 @@
 # Schema/LinhaSchema.py
 from pydantic import BaseModel
+from datetime import datetime
 from .sublinhaSchema import SublinhaResponse
 
 
@@ -20,6 +21,7 @@ class LinhaResponse(BaseModel):
     id: int
     nome: str
     sublinhas: list[SublinhaResponse] = []
+    data_criacao: datetime
 
     class Config:
         from_attributes = True

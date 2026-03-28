@@ -9,6 +9,7 @@ interface Sublinha {
 interface Linha {
     id: number
     nome: string
+    data_criacao?: string
     sublinhas: Sublinha[]
 }
 
@@ -55,35 +56,48 @@ const CardLinha: React.FC<CardLinhaProps> = ({
         <div className="border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
-                    <button
-                        onClick={onToggleExpandir}
-                        className="text-gray-600 hover:text-gray-800 transition-colors"
-                        disabled={!linha.sublinhas || linha.sublinhas.length === 0}
-                    >
-                        <i className={`bi bi-chevron-${estaExpandida ? 'down' : 'right'}`}></i>
-                    </button>
-                    {estaEditandoLinha ? (
-                        <input
-                            type="text"
-                            className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            value={nomeLinhaEditando}
-                            onChange={(e) => onNomeLinhaEditandoChange(e.target.value)}
-                            autoFocus
-                        />
-                    ) : (
-                        <>
-                            <h4 className="font-semibold text-gray-900 text-lg">
-                                {linha.nome}
-                            </h4>
-                            {linha.sublinhas && linha.sublinhas.length > 0 && (
-                                <span className="text-sm text-gray-500">
-                                    ({linha.sublinhas.length} {linha.sublinhas.length === 1 ? 'sublinha' : 'sublinhass'})
+                    <div className="w-8 flex justify-center">
+                        <button
+                            onClick={onToggleExpandir}
+                            className="text-gray-600 hover:text-gray-800 transition-colors"
+                            disabled={!linha.sublinhas || linha.sublinhas.length === 0}
+                        >
+                            <i className={`bi bi-chevron-${estaExpandida ? 'down' : 'right'}`}></i>
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-3 items-center w-full gap-4">
+                        <div className="min-w-0 col-span-1">
+                            {estaEditandoLinha ? (
+                                <input
+                                    type="text"
+                                    className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    value={nomeLinhaEditando}
+                                    onChange={(e) => onNomeLinhaEditandoChange(e.target.value)}
+                                    autoFocus
+                                />
+                            ) : (
+                                <h4 className="font-semibold text-gray-900 text-lg truncate">
+                                    {linha.nome}
+                                </h4>
+                            )}
+                        </div>
+                        <div className="col-span-1 flex justify-center">
+                            {linha.data_criacao && !estaEditandoLinha && (
+                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                    {new Date(linha.data_criacao).toLocaleDateString('pt-BR')}
                                 </span>
                             )}
-                        </>
-                    )}
+                        </div>
+                        <div className="col-span-1 flex justify-end pr-8">
+                            {linha.sublinhas && linha.sublinhas.length > 0 && (
+                                <span className="text-sm text-gray-500 whitespace-nowrap">
+                                    {linha.sublinhas.length} {linha.sublinhas.length === 1 ? 'sublinha' : 'sublinhas'}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-24 justify-end">
                     {estaEditandoLinha ? (
                         <>
                             <button

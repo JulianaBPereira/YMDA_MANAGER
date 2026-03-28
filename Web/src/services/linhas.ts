@@ -3,6 +3,7 @@ import { fetchAPI } from '../api/api'
 export interface Linha {
     id: number
     nome: string
+    data_criacao?: string
 }
 
 export interface CriarLinhaData {
