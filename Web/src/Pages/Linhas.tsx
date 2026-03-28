@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import TopBar from '../Components/topBar/TopBar'
 import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
-import FormCadastrarLinha from '../Components/Linhas/FormCadastrarLinha'
-import FormCadastrarSublinha from '../Components/Linhas/FormCadastrarSublinha'
 import CardLinha from '../Components/Linhas/CardLinha'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { linhasAPI, sublinhasAPI } from '../api/api'
+import { listarLinhas, atualizarLinha, deletarLinha } from '../services/linhas'
+import { fetchAPI } from '../api/api'
+
 
 interface Sublinha {
     id: number
@@ -23,15 +23,11 @@ interface Linha {
 }
 
 const Linhas = () => {
-    const [abaAtiva, setAbaAtiva] = useState<'linha' | 'sublinha' | 'listar'>('linha')
+    const [abaAtiva, setAbaAtiva] = useState<'cadastrar' | 'listar'>('cadastrar')
     
-    // Estados para cadastro de linha
+    // Estados para cadastro composto
     const [nomeLinha, setNomeLinha] = useState('')
-    
-    // Estados para cadastro de sublinha
-    const [linhaSelecionada, setLinhaSelecionada] = useState<number>(0)
     const [nomeSublinha, setNomeSublinha] = useState('')
-    const [linhasDisponiveis, setLinhasDisponiveis] = useState<Linha[]>([])
     
     // Estados para listagem
     const [linhas, setLinhas] = useState<Linha[]>([])
@@ -53,103 +49,51 @@ const Linhas = () => {
     const [sublinhaIdParaExcluir, setSublinhaIdParaExcluir] = useState<number | null>(null)
 
     useEffect(() => {
-        if (abaAtiva === 'listar') {
-            carregarLinhas()
-        } else if (abaAtiva === 'sublinha') {
-            carregarLinhasDisponiveis()
-        }
+        if (abaAtiva === 'listar') carregarLinhas()
     }, [abaAtiva])
-
-    const carregarLinhasDisponiveis = async () => {
-        try {
-            const dados = await linhasAPI.listarTodos()
-            setLinhasDisponiveis(dados.map((l: any) => ({ id: l.linha_id, nome: l.nome, sublinhas: [] })))
-            if (dados.length > 0 && linhaSelecionada === 0) {
-                setLinhaSelecionada(dados[0].linha_id)
-            }
-        } catch (error) {
-            console.error('Erro ao carregar linhas:', error)
-        }
-    }
 
     const carregarLinhas = async () => {
         try {
-            const dadosLinhas = await linhasAPI.listarTodos()
-            
-            const linhasComSublinhas = await Promise.all(
-                dadosLinhas.map(async (linha: any) => {
-                    const sublinhas = await sublinhasAPI.buscarPorLinha(linha.linha_id)
-                    return {
-                        id: linha.linha_id,
-                        nome: linha.nome,
-                        sublinhas: sublinhas.map((s: any) => ({
-                            id: s.sublinha_id,
-                            linha_id: s.linha_id,
-                            nome: s.nome
-                        }))
-                    }
-                })
-            )
-            
-            setLinhas(linhasComSublinhas)
-        } catch (error) {
-            console.error('Erro ao carregar linhas:', error)
+            const resp = await listarLinhas()
+            const normalizadas: Linha[] = Array.isArray(resp)
+                ? resp.map((l: any) => ({
+                    id: l.id,
+                    nome: l.nome,
+                    sublinhas: Array.isArray(l.sublinhas) ? l.sublinhas : []
+                }))
+                : []
+            setLinhas(normalizadas)
+        } catch (e: any) {
             setTituloErro('Erro!')
-            setMensagemErro('Erro ao carregar linhas. Tente novamente.')
+            setMensagemErro(e?.message || 'Erro ao carregar linhas')
             setModalErroAberto(true)
+            setLinhas([])
         }
     }
 
-    const handleCadastrarLinha = async (e: React.FormEvent) => {
+    const handleCadastrarComposto = async (e: React.FormEvent) => {
         e.preventDefault()
         
-        if (!nomeLinha.trim()) {
+        if (!nomeLinha.trim() || !nomeSublinha.trim()) {
             setTituloErro('Erro!')
-            setMensagemErro('Informe o nome da linha')
+            setMensagemErro('Informe o nome da linha e da sublinha')
             setModalErroAberto(true)
             return
         }
 
         try {
-            await linhasAPI.criar({ nome: nomeLinha.trim() })
-            setNomeLinha('')
-            setMensagemSucesso('Linha cadastrada com sucesso!')
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao cadastrar linha: ${error?.message || 'Tente novamente.'}`)
-            setModalErroAberto(true)
-        }
-    }
-
-    const handleCadastrarSublinha = async (e: React.FormEvent) => {
-        e.preventDefault()
-        
-        if (!nomeSublinha.trim()) {
-            setTituloErro('Erro!')
-            setMensagemErro('Informe o nome da sublinha')
-            setModalErroAberto(true)
-            return
-        }
-
-        if (!linhaSelecionada) {
-            setTituloErro('Erro!')
-            setMensagemErro('Selecione uma linha')
-            setModalErroAberto(true)
-            return
-        }
-
-        try {
-            await sublinhasAPI.criar({
-                nome: nomeSublinha.trim(),
-                linha_id: linhaSelecionada
+            await fetchAPI('/linhas/com-sublinha', {
+                method: 'POST',
+                body: JSON.stringify({ nome_linha: nomeLinha.trim(), nome_sublinha: nomeSublinha.trim() })
             })
+            setNomeLinha('')
             setNomeSublinha('')
-            setMensagemSucesso('Sublinha cadastrada com sucesso!')
+            setMensagemSucesso('Linha e sublinha criadas com sucesso!')
             setModalSucessoAberto(true)
-        } catch (error: any) {
+            if (abaAtiva === 'listar') await carregarLinhas()
+        } catch (e: any) {
             setTituloErro('Erro!')
-            setMensagemErro(`Erro ao cadastrar sublinha: ${error?.message || 'Tente novamente.'}`)
+            setMensagemErro(e?.message || 'Erro ao criar linha e sublinha')
             setModalErroAberto(true)
         }
     }
@@ -163,17 +107,16 @@ const Linhas = () => {
         if (!linhaIdParaExcluir) return
 
         try {
-            const resposta = await linhasAPI.deletar(linhaIdParaExcluir)
+            await deletarLinha(linhaIdParaExcluir)
+            setModalConfirmacaoLinhaAberto(false)
+            setLinhaIdParaExcluir(null)
             await carregarLinhas()
-            const mensagem = resposta?.mensagem || 'Linha excluída com sucesso!'
-            setMensagemSucesso(mensagem)
-            setModalSucessoAberto(true)
+        } catch (e: any) {
+            setModalConfirmacaoLinhaAberto(false)
             setLinhaIdParaExcluir(null)
-        } catch (error: any) {
             setTituloErro('Erro!')
-            setMensagemErro(`Erro ao excluir linha: ${error?.message || 'Tente novamente.'}`)
+            setMensagemErro(e?.message || 'Erro ao excluir linha')
             setModalErroAberto(true)
-            setLinhaIdParaExcluir(null)
         }
     }
 
@@ -185,18 +128,12 @@ const Linhas = () => {
     const confirmarExcluirSublinha = async () => {
         if (!sublinhaIdParaExcluir) return
 
-        try {
-            await sublinhasAPI.deletar(sublinhaIdParaExcluir)
-            await carregarLinhas()
-            setMensagemSucesso('Sublinha excluída com sucesso!')
-            setModalSucessoAberto(true)
-            setSublinhaIdParaExcluir(null)
-        } catch (error: any) {
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao excluir sublinha: ${error?.message || 'Tente novamente.'}`)
-            setModalErroAberto(true)
-            setSublinhaIdParaExcluir(null)
-        }
+        // Backend antigo removido
+        setModalConfirmacaoSublinhaAberto(false)
+        setSublinhaIdParaExcluir(null)
+        setTituloErro('Indisponível')
+        setMensagemErro('Exclusão de sublinha desabilitada enquanto o novo backend é construído.')
+        setModalErroAberto(true)
     }
 
     const handleIniciarEdicaoLinha = (linha: Linha) => {
@@ -214,15 +151,15 @@ const Linhas = () => {
         }
 
         try {
-            await linhasAPI.atualizar(linhaId, { nome: nomeLinhaEditando.trim() })
-            await carregarLinhas()
+            await atualizarLinha(linhaId, { nome: nomeLinhaEditando.trim() })
             setLinhaEditando(null)
             setNomeLinhaEditando('')
+            await carregarLinhas()
             setMensagemSucesso('Linha atualizada com sucesso!')
             setModalSucessoAberto(true)
-        } catch (error: any) {
+        } catch (e: any) {
             setTituloErro('Erro!')
-            setMensagemErro(`Erro ao atualizar linha: ${error?.message || 'Tente novamente.'}`)
+            setMensagemErro(e?.message || 'Erro ao atualizar linha')
             setModalErroAberto(true)
         }
     }
@@ -246,21 +183,10 @@ const Linhas = () => {
             return
         }
 
-        try {
-            await sublinhasAPI.atualizar(sublinha.id, {
-                nome: nomeSublinhaEditando.trim(),
-                linha_id: sublinha.linha_id
-            })
-            await carregarLinhas()
-            setSublinhaEditando(null)
-            setNomeSublinhaEditando('')
-            setMensagemSucesso('Sublinha atualizada com sucesso!')
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao atualizar sublinha: ${error?.message || 'Tente novamente.'}`)
-            setModalErroAberto(true)
-        }
+        // Backend antigo removido
+        setTituloErro('Indisponível')
+        setMensagemErro('Atualização de sublinha desabilitada enquanto o novo backend é construído.')
+        setModalErroAberto(true)
     }
 
     const handleCancelarEdicaoSublinha = () => {
@@ -289,28 +215,16 @@ const Linhas = () => {
                         <div className="bg-white rounded-lg shadow-md overflow-hidden">
                             <div className="flex border-b border-gray-200">
                                 <button
-                                    onClick={() => setAbaAtiva('linha')}
+                                    onClick={() => setAbaAtiva('cadastrar')}
                                     className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
-                                        abaAtiva === 'linha'
+                                        abaAtiva === 'cadastrar'
                                             ? 'text-white border-b-2'
                                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                     }`}
-                                    style={abaAtiva === 'linha' ? { backgroundColor: 'var(--bg-azul)' } : {}}
+                                    style={abaAtiva === 'cadastrar' ? { backgroundColor: 'var(--bg-azul)' } : {}}
                                 >
                                     <i className="bi bi-diagram-3 mr-2"></i>
-                                    Cadastrar Linha
-                                </button>
-                                <button
-                                    onClick={() => setAbaAtiva('sublinha')}
-                                    className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
-                                        abaAtiva === 'sublinha'
-                                            ? 'text-white border-b-2'
-                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                    }`}
-                                    style={abaAtiva === 'sublinha' ? { backgroundColor: 'var(--bg-azul)' } : {}}
-                                >
-                                    <i className="bi bi-diagram-2 mr-2"></i>
-                                    Cadastrar Sublinha
+                                    Cadastrar
                                 </button>
                                 <button
                                     onClick={() => setAbaAtiva('listar')}
@@ -327,23 +241,49 @@ const Linhas = () => {
                             </div>
 
                             <div className="p-6">
-                                {abaAtiva === 'linha' && (
-                                    <FormCadastrarLinha
-                                        nomeLinha={nomeLinha}
-                                        onNomeLinhaChange={setNomeLinha}
-                                        onSubmit={handleCadastrarLinha}
-                                    />
-                                )}
-
-                                {abaAtiva === 'sublinha' && (
-                                    <FormCadastrarSublinha
-                                        linhaSelecionada={linhaSelecionada}
-                                        onLinhaSelecionadaChange={setLinhaSelecionada}
-                                        nomeSublinha={nomeSublinha}
-                                        onNomeSublinhaChange={setNomeSublinha}
-                                        linhasDisponiveis={linhasDisponiveis}
-                                        onSubmit={handleCadastrarSublinha}
-                                    />
+                                {abaAtiva === 'cadastrar' && (
+                                    <form onSubmit={handleCadastrarComposto}>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Nome da Linha
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    required
+                                                    placeholder="Ex: Linha 1"
+                                                    value={nomeLinha}
+                                                    onChange={(e) => setNomeLinha(e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Nome da Sublinha
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    required
+                                                    placeholder="Ex: Sublinha A"
+                                                    value={nomeSublinha}
+                                                    onChange={(e) => setNomeSublinha(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3 mt-4">
+                                            <button 
+                                                type="submit"
+                                                className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                                                style={{ backgroundColor: 'var(--bg-azul)' }}
+                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                            >
+                                                <i className="bi bi-plus-circle-fill"></i>
+                                                <span>Cadastrar</span>
+                                            </button>
+                                        </div>
+                                    </form>
                                 )}
 
                                 {abaAtiva === 'listar' && (

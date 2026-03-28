@@ -4,7 +4,7 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { dispositivosRaspberryAPI } from '../api/api'
+import { listarDispositivos, criarDispositivo, atualizarDispositivo, deletarDispositivo } from '../services/dispositivos'
 
 interface DispositivoRaspberry {
     id: number
@@ -43,19 +43,18 @@ const DispositivosRaspberry = () => {
     const carregarDispositivos = async () => {
         setCarregando(true)
         try {
-            const dados = await dispositivosRaspberryAPI.listar()
-            const raw = Array.isArray(dados) ? dados : []
-            const lista = raw.map((d: any) => ({
-                id: d.id || d.dispositivo_id,
-                serial: d.serial || '',
-                nome: d.nome || '',
-                data_registro: d.data_registro
-            }))
-            setDispositivos(lista)
-        } catch (error: any) {
+            const resp = await listarDispositivos()
+            setDispositivos(resp.map(d => ({
+                id: d.id,
+                serial: d.serial_number,
+                nome: d.nome,
+                data_registro: d.criado_em,
+            })))
+        } catch (e: any) {
             setTituloErro('Erro!')
-            setMensagemErro(`Erro ao carregar dispositivos: ${error?.message || 'Erro desconhecido'}`)
+            setMensagemErro(e?.message || 'Erro ao carregar dispositivos')
             setModalErroAberto(true)
+            setDispositivos([])
         } finally {
             setCarregando(false)
         }
@@ -63,44 +62,41 @@ const DispositivosRaspberry = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (dispositivoEditando) {
-            const nome = nomeNovo.trim()
-            setSalvando(true)
-            try {
-                await dispositivosRaspberryAPI.atualizarNome(dispositivoEditando.id, nome)
+        try {
+            if (dispositivoEditando) {
+                const nome = nomeNovo.trim()
+                setSalvando(true)
+                await atualizarDispositivo(dispositivoEditando.id, {
+                    nome,
+                    serial_number: dispositivoEditando.serial, // serial não editável aqui
+                })
                 setMensagemSucesso('Dispositivo atualizado com sucesso!')
                 setModalSucessoAberto(true)
-                limparFormulario()
                 setDispositivoEditando(null)
-                if (abaAtiva === 'listar') await carregarDispositivos()
-            } catch (error: any) {
-                setTituloErro('Erro!')
-                setMensagemErro(`Erro ao atualizar: ${error?.message || 'Erro desconhecido'}`)
-                setModalErroAberto(true)
-            } finally {
-                setSalvando(false)
-            }
-        } else {
-            const serial = serialNovo.trim()
-            if (!serial) {
-                setMensagemErro('Informe o serial do dispositivo.')
-                setModalErroAberto(true)
-                return
-            }
-            setSalvando(true)
-            try {
-                await dispositivosRaspberryAPI.criar(serial, nomeNovo.trim() || undefined)
+                limparFormulario()
+            } else {
+                const serial = serialNovo.trim()
+                if (!serial) {
+                    setMensagemErro('Informe o serial do dispositivo.')
+                    setModalErroAberto(true)
+                    return
+                }
+                setSalvando(true)
+                await criarDispositivo({
+                    nome: nomeNovo.trim(),
+                    serial_number: serial,
+                })
                 setMensagemSucesso('Dispositivo cadastrado com sucesso!')
                 setModalSucessoAberto(true)
                 limparFormulario()
-                if (abaAtiva === 'listar') await carregarDispositivos()
-            } catch (error: any) {
-                setTituloErro('Erro!')
-                setMensagemErro(error?.message || 'Erro ao cadastrar dispositivo.')
-                setModalErroAberto(true)
-            } finally {
-                setSalvando(false)
             }
+            await carregarDispositivos()
+        } catch (e: any) {
+            setTituloErro('Erro!')
+            setMensagemErro(e?.message || 'Erro ao salvar dispositivo')
+            setModalErroAberto(true)
+        } finally {
+            setSalvando(false)
         }
     }
 
@@ -128,17 +124,17 @@ const DispositivosRaspberry = () => {
 
     const handleConfirmarExclusao = async () => {
         if (!dispositivoAExcluir) return
-        setExcluindo(true)
         try {
-            await dispositivosRaspberryAPI.remover(dispositivoAExcluir.id)
-            setMensagemSucesso('Dispositivo excluído com sucesso!')
-            setModalSucessoAberto(true)
-            setDispositivoAExcluir(null)
+            setExcluindo(true)
+            await deletarDispositivo(dispositivoAExcluir.id)
             setModalExcluirAberto(false)
+            setDispositivoAExcluir(null)
             await carregarDispositivos()
-        } catch (error: any) {
+        } catch (e: any) {
+            setModalExcluirAberto(false)
+            setDispositivoAExcluir(null)
             setTituloErro('Erro!')
-            setMensagemErro(`Erro ao excluir: ${error?.message || 'Erro desconhecido'}`)
+            setMensagemErro(e?.message || 'Erro ao excluir dispositivo')
             setModalErroAberto(true)
         } finally {
             setExcluindo(false)

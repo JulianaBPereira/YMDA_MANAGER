@@ -1,65 +1,51 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
 
-interface ProtectedRouteProps {
+type ProtectedRouteProps = {
   children: React.ReactNode;
-  allowedRoles?: ('admin' | 'operador' | 'master')[];
-  onlyOperador?: boolean;
   onlyAdmin?: boolean;
-}
+  allowedRoles?: string[];
+  redirectTo?: string; // fallback when not authenticated/authorized
+};
 
-const ProtectedRoute = ({ 
-  children, 
-  allowedRoles, 
-  onlyOperador, 
-  onlyAdmin 
-}: ProtectedRouteProps) => {
-  const { user, isOperador, isAdmin, isMaster } = useAuth();
+export default function ProtectedRoute(props: ProtectedRouteProps) {
+  const {
+    children,
+    onlyAdmin = false,
+    allowedRoles,
+    redirectTo = "/login",
+  } = props;
   const location = useLocation();
 
-  // Se não há usuário logado, redireciona para o login apropriado
-  if (!user) {
-    // Se estava em uma rota IHM (operador), redireciona para login do operador
-    if (location.pathname.startsWith('/ihm')) {
-      return <Navigate to="/login" replace />;
+  // Obtém usuário do localStorage (compatível com api.ts)
+  let user: { role?: string } | null = null;
+  if (typeof window !== "undefined") {
+    try {
+      const userStr = window.localStorage.getItem("user");
+      if (userStr) {
+        user = JSON.parse(userStr);
+      }
+    } catch {
+      user = null;
     }
-    // Caso contrário, redireciona para login admin
-    return <Navigate to="/admin" replace state={{ from: location }} />;
   }
 
-  // Rotas apenas para operadores - nem master tem acesso
-  if (onlyOperador) {
-    if (!isOperador) {
-      return <Navigate to="/" replace />;
-    }
-    return <>{children}</>;
+  const isAuthenticated = !!user;
+  const role = (user?.role || "").toString();
+
+  // Regras de autorização
+  let authorized = isAuthenticated;
+  if (authorized && onlyAdmin) {
+    authorized = role === "admin" || role === "master";
+  }
+  if (authorized && Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+    authorized = allowedRoles.includes(role);
   }
 
-  // Master tem acesso total (exceto rotas onlyOperador)
-  if (isMaster) {
-    return <>{children}</>;
-  }
-
-  // Verifica se o usuário tem permissão baseado nas props
-
-  if (onlyAdmin && !isAdmin) {
-    // Se é operador tentando acessar rota de admin, redireciona para IHM
-    if (isOperador) {
-      return <Navigate to="/ihm/leitor" replace />;
-    }
-    return <Navigate to="/" replace />;
-  }
-
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Se é operador, redireciona para IHM, senão para dashboard
-    if (isOperador) {
-      return <Navigate to="/ihm/leitor" replace />;
-    }
-    return <Navigate to="/" replace />;
+  if (!authorized) {
+    return <Navigate to={redirectTo} replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
-};
-
-export default ProtectedRoute;
+}
 

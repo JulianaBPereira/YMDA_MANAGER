@@ -4,7 +4,10 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
 import ModalFormulario from '../Components/Compartilhados/ModalFormulario'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { pecasAPI, modelosAPI, produtosAPI } from '../api/api'
+import { listarPecas, atualizarPeca, deletarPeca, type Peca as PecaApi } from '../services/pecas'
+import { listarModelos, type Modelo as ModeloApi } from '../services/modelos'
+import { listarProdutos, type Produto as ProdutoApi } from '../services/produtos'
+
 
 interface Peca {
     id: number
@@ -54,19 +57,35 @@ const ListagemPecas = () => {
         try {
             setCarregando(true)
             setErro(null)
-            
-            // Usar endpoint otimizado que retorna tudo em uma única requisição
-            const [pecasEnriquecidas, modelosData, produtosData] = await Promise.all([
-                pecasAPI.listarTodosComRelacoes(),
-                modelosAPI.listarTodos(),
-                produtosAPI.listar()
+
+            const [pecasResp, modelosResp, produtosResp] = await Promise.all([
+                listarPecas(),
+                listarModelos(),
+                listarProdutos(),
             ])
 
-            setPecas(pecasEnriquecidas)
-            setModelos(modelosData)
-            setProdutos(produtosData)
+            // Mapear respostas para a estrutura esperada na página (enriquecendo quando possível)
+            const modelosPorId = new Map<number, ModeloApi>(modelosResp.map(m => [m.id, m]))
+            const produtosPorId = new Map<number, ProdutoApi>(produtosResp.map(p => [p.id, p]))
+
+            const pecasMapeadas: Peca[] = (pecasResp as PecaApi[]).map((p) => {
+                const modelo = p.modelo_id ? modelosPorId.get(p.modelo_id) : undefined
+                const produto = p.produto_id ? produtosPorId.get(p.produto_id) : undefined
+                return {
+                    id: p.id,
+                    codigo: p.codigo,
+                    nome: p.nome,
+                    modelo_id: p.modelo_id,
+                    produto_id: p.produto_id,
+                    modelo_nome: modelo?.nome,
+                    produto_nome: produto?.nome,
+                }
+            })
+
+            setPecas(pecasMapeadas)
+            setModelos(modelosResp)
+            setProdutos(produtosResp)
         } catch (err) {
-            console.error('Erro ao carregar dados:', err)
             setErro(err instanceof Error ? err.message : 'Erro ao carregar dados')
         } finally {
             setCarregando(false)
@@ -112,34 +131,20 @@ const ListagemPecas = () => {
 
         try {
             setErro(null)
-            
-            // Atualizar apenas a peça (código e nome)
-            if (pecaEditando.modelo_id) {
-                await pecasAPI.atualizar(pecaEditando.id, {
-                    modelo_id: pecaEditando.modelo_id,
-                    codigo: dados.codigo_peca,
-                    nome: dados.nome_peca
-                })
-                
-                // Atualizar estado local otimisticamente
-                setPecas(pecas.map(p => 
-                    p.id === pecaEditando.id 
-                        ? {
-                            ...p,
-                            codigo: dados.codigo_peca,
-                            nome: dados.nome_peca
-                        }
-                        : p
-                ))
+
+            const nome = (dados.nome_peca ?? pecaEditando.nome)?.toString().trim()
+            const codigo = (dados.codigo_peca ?? pecaEditando.codigo)?.toString().trim()
+            if (!nome || !codigo) {
+                setErro('Nome e código da peça são obrigatórios.')
+                return
             }
-            
+
+            await atualizarPeca(pecaEditando.id, { nome, codigo })
             setModalEdicaoAberto(false)
             setPecaEditando(null)
-        } catch (err) {
-            console.error('Erro ao salvar peça:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao salvar peça')
-            // Em caso de erro, recarregar dados para garantir consistência
             await carregarDados()
+        } catch (err) {
+            setErro(err instanceof Error ? err.message : 'Erro ao salvar peça')
         }
     }
 
@@ -153,28 +158,12 @@ const ListagemPecas = () => {
         
         try {
             setErro(null)
-            
-            // Guardar referência para atualização otimista
-            const pecaId = itemParaDeletar.id
-            
-            // Atualizar estado local otimisticamente (remover peça imediatamente)
-            setPecas(pecas.filter(p => p.id !== pecaId))
-            
-            try {
-                await pecasAPI.deletar(pecaId)
-            } catch (err) {
-                setErro(`Erro ao deletar peça: ${err instanceof Error ? err.message : 'Erro desconhecido'}`)
-                // Reverter atualização otimista em caso de erro
-                await carregarDados()
-            }
-            
+            await deletarPeca(itemParaDeletar.id)
             setModalConfirmacao(false)
             setItemParaDeletar(null)
-        } catch (err) {
-            console.error('Erro ao deletar:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao deletar')
-            // Recarregar dados em caso de erro
             await carregarDados()
+        } catch (err) {
+            setErro(err instanceof Error ? err.message : 'Erro ao deletar')
             setModalConfirmacao(false)
         }
     }

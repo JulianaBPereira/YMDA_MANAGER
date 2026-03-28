@@ -4,12 +4,8 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import ModalFiltro from '../Components/Compartilhados/ModalFiltro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
 import ModalErro from '../Components/Modais/ModalErro'
-import { registrosAPI } from '../api/api'
-import { postosAPI } from '../api/api'
-import { funcionariosAPI } from '../api/api'
-import { modelosAPI } from '../api/api'
-import { produtosAPI } from '../api/api'
 import * as XLSX from 'xlsx'
+import { listarRegistros, deletarRegistro, type RegistroProducao } from '../services/registrosProducao'
 
 interface Registro {
     id: number
@@ -105,47 +101,14 @@ const Registros = () => {
         }
     }, [horarioInput])
 
-    // Carregar opções de filtros
+    // Carregar opções de filtros (backend antigo removido)
     useEffect(() => {
         const carregarOpcoesFiltros = async () => {
-            try {
-                // Carregar postos (processos)
-                const postos = await postosAPI.listar()
-                setOpcoesProcesso(postos.map((p: any) => ({ id: p.nome, label: p.nome })))
-
-                // Carregar funcionários (operadores e matrículas)
-                const funcionarios = await funcionariosAPI.listarTodos()
-                setOpcoesOperador(funcionarios.map((f: any) => ({ id: f.nome, label: f.nome })))
-                setOpcoesMatricula(funcionarios.map((f: any) => ({ id: f.matricula, label: f.matricula })))
-
-                // Carregar produtos para o filtro de Produto
-                const produtos = await produtosAPI.listar()
-                const produtosUnicos = Array.from(
-                    new Set(
-                        produtos
-                            .map((p: any) => p.nome)
-                            .filter((nome: string) => Boolean(nome))
-                    )
-                )
-                // Também inclui modelos, pois alguns registros antigos não têm produto vinculado
-                const modelos = await modelosAPI.listarTodos()
-                const modelosUnicos = modelos
-                    .map((m: any) => m.descricao || m.codigo)
-                    .filter((valor: string) => Boolean(valor))
-
-                const opcoesProdutoUnicas = Array.from(
-                    new Set([...produtosUnicos, ...modelosUnicos])
-                )
-
-                setOpcoesProduto(
-                    opcoesProdutoUnicas.map((valor: string) => ({
-                        id: valor,
-                        label: valor
-                    }))
-                )
-            } catch (error) {
-                console.error('Erro ao carregar opções de filtros:', error)
-            }
+            // Backend em reconstrução: deixar opções vazias
+            setOpcoesProcesso([])
+            setOpcoesOperador([])
+            setOpcoesMatricula([])
+            setOpcoesProduto([])
         }
 
         carregarOpcoesFiltros()
@@ -158,55 +121,22 @@ const Registros = () => {
         const buscar = async () => {
             setCarregando(true)
             try {
-                // Montar parâmetros inline
-                const offset = (paginaAtual - 1) * itensPorPagina
-                const params: any = { limit: itensPorPagina, offset }
-
-                if (filtros.data) params.data = filtros.data
-                if (filtros.processo.length > 0) params.posto = filtros.processo[0]
-                if (filtros.produto.length > 0) params.produto = filtros.produto
-                if (filtros.turno.length > 0) params.turno = filtros.turno
-                if (filtros.horario) params.hora_inicio = filtros.horario
-
-                const resposta = await registrosAPI.listar(params)
-
                 if (cancelado) return
-
-                // Mapear resposta do backend para o formato do componente
-                const registrosMapeados: Registro[] = resposta.registros.map((reg: any) => ({
-                    id: reg.id,
-                    data: reg.data_inicio || '',
-                    data_inicio: reg.data_inicio || '',
-                    data_fim: reg.data_fim || '',
-                    hora: reg.hora_inicio || '',
-                    hora_inicio: reg.hora_inicio || '',
-                    hora_fim: reg.hora_fim || '',
-                    operador: reg.funcionario?.nome || '',
-                    matricula: reg.funcionario?.matricula || '',
-                    posto: reg.posto?.nome || reg.posto || '',
-                    totem: reg.dispositivo_serial || reg.totem?.nome || (reg.totem?.id ? `Totem ${reg.totem.id}` : ''),
-                    produto: reg.produto?.nome || reg.modelo?.descricao || reg.modelo?.codigo || '',
-                    modelo: reg.modelo?.descricao || reg.modelo?.codigo || '',
-                    modelo_codigo: reg.modelo?.codigo || '',
-                    quantidade: reg.quantidade ?? 0,
-                    turno: reg.funcionario?.turno || '',
-                    operacao: reg.operacao?.nome || reg.operacao?.codigo || '-',
-                    comentarios: reg.comentarios || '-',
-                    peca: reg.peca?.nome || reg.peca?.codigo || '',
-                    pecas: reg.pecas || [],
-                    codigo_producao: reg.codigo_producao || '',
-                    serial: reg.serial || '',
-                    nome: reg.nome || '',
-                    habilitado: reg.habilitado ?? false,
-                    operacao_pecas: reg.operacao_pecas || [],
-                    operacao_totens: reg.operacao_totens || []
+                const resp = await listarRegistros()
+                if (cancelado) return
+                // Mapear para o formato da página
+                const mapped: Registro[] = (resp as RegistroProducao[]).map(r => ({
+                    id: r.id,
+                    data: r.data_inicio,
+                    data_inicio: r.data_inicio,
+                    data_fim: r.data_fim || undefined,
+                    hora_inicio: r.horario_inicio || undefined,
+                    hora_fim: r.horario_fim || undefined,
                 }))
-
-                setRegistros(registrosMapeados)
-                setTotalRegistros(resposta.total || 0)
+                setRegistros(mapped)
+                setTotalRegistros(mapped.length)
             } catch (error) {
                 if (cancelado) return
-                console.error('Erro ao buscar registros:', error)
                 setRegistros([])
                 setTotalRegistros(0)
             } finally {
@@ -384,48 +314,20 @@ const Registros = () => {
     }
 
     const handleConfirmarExclusao = async () => {
-        if (registrosSelecionados.size === 0) return
-
-        setExcluindo(true)
         try {
-            const idsParaExcluir = Array.from(registrosSelecionados)
-            console.log('IDs para excluir:', idsParaExcluir)
-            
-            let resultado
-            if (idsParaExcluir.length === 1) {
-                // Excluir um único registro
-                resultado = await registrosAPI.deletar(idsParaExcluir[0])
-            } else {
-                // Excluir múltiplos registros
-                resultado = await registrosAPI.deletarMultiplos(idsParaExcluir)
-            }
-            
-            console.log('Resultado da exclusão:', resultado)
-
-            // Verificar se houve erro na resposta
-            if (resultado && resultado.erro) {
-                throw new Error(resultado.erro)
-            }
-
-            // Limpar seleção
-            setRegistrosSelecionados(new Set())
-            
-            // Recarregar registros via trigger
-            setRefetchTrigger(prev => prev + 1)
-            
-            // Exibir modal de sucesso
-            const mensagem = resultado?.mensagem || `${idsParaExcluir.length} registro(s) excluído(s) com sucesso`
-            setMensagemSucesso(mensagem)
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            console.error('Erro ao excluir registros:', error)
-            const msg = error?.message || error?.erro || 'Erro desconhecido ao excluir registros'
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao excluir registros: ${msg}`)
-            setModalErroAberto(true)
-        } finally {
-            setExcluindo(false)
             setModalExcluirAberto(false)
+            const ids = Array.from(registrosSelecionados)
+            for (const id of ids) {
+                await deletarRegistro(id)
+            }
+            setRegistrosSelecionados(new Set())
+            setMensagemSucesso('Registros excluídos com sucesso!')
+            setModalSucessoAberto(true)
+            setRefetchTrigger(t => t + 1)
+        } catch (e: any) {
+            setTituloErro('Erro!')
+            setMensagemErro(e?.message || 'Erro ao excluir registros')
+            setModalErroAberto(true)
         }
     }
 

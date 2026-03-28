@@ -1,99 +1,47 @@
-import logging
-import os
-import sys
-from pathlib import Path
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .Controller.Funcionarios_controller import router as funcionario_router
+from .Controller.produtos_controller import router as produtos_router
+from .Controller.pecas_controller import router as pecas_router
+from .Controller.modelos_controller import router as modelos_router
+from .Controller.linhas_controller import router as linhas_router
+from .Controller.dispositivos_controller import router as dispositivos_router
+from .Controller.registros_producao_controller import router as registros_router
+from .Controller.operacoes_controller import router as operacoes_router
+from .Database.database import SessionLocal
+from .DAO.dispositvos_dao import DispositivosDAO
+from .Services.dispositivos_service import DispositivosService
+import uvicorn 
+from . import Model  # garante que todos os modelos sejam importados e mapeados
 
-# Configure sys.path BEFORE any Server.* imports
-parent_dir = Path(__file__).parent.parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
+app = FastAPI()
 
-from flask import Flask
-from flask_cors import CORS
-from Backend.blueprints import register_blueprints
-from Backend.websocket_manager import init_socketio, register_socketio_events
-from Backend.models.database import DatabaseConnection
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(funcionario_router, prefix="/api")
+app.include_router(produtos_router, prefix="/api")
+app.include_router(pecas_router, prefix="/api")
+app.include_router(modelos_router, prefix="/api")
+app.include_router(linhas_router, prefix="/api")
+app.include_router(dispositivos_router, prefix="/api")
+app.include_router(registros_router, prefix="/api")
+app.include_router(operacoes_router, prefix="/api")
 
 
-class NoOptionsLogFilter(logging.Filter):
-    """Evita que requisições OPTIONS (preflight CORS) apareçam no log."""
-    def filter(self, record):
-        return "OPTIONS" not in record.getMessage()
-
-
-def create_app():
-    app = Flask(__name__)
-
-    # Não logar requisições OPTIONS (preflight CORS)
-    werkzeug_log = logging.getLogger("werkzeug")
-    werkzeug_log.addFilter(NoOptionsLogFilter())
-
-    # CORS liberado para tudo
-    CORS(
-        app,
-        resources={r"/*": {"origins": "*"}},
-        supports_credentials=True
-    )
-
-    socketio = init_socketio(app)
-    # Garantir que o app tenha referência ao SocketIO (evita "SocketIO não inicializado" em qualquer contexto)
-    app.extensions["socketio"] = socketio
-
-    # Registrar eventos do WebSocket
-    register_socketio_events(socketio)
-
-    register_blueprints(app)
-
-    # Garantir usuários padrão (admin, operador, master) mesmo se init_database não rodou
+@app.on_event("startup")
+def registrar_dispositivo_local_ao_iniciar():
+    db = SessionLocal()
     try:
-        DatabaseConnection.ensure_default_usuarios()
-    except Exception:
-        pass
-
-    # Corrigir FK constraint problemática da tabela operacoes_canceladas
-    # (remove a FK que deletava cancelamentos quando o registro era removido)
-    try:
-        DatabaseConnection.fix_cancelamentos_fk()
-    except Exception:
-        pass
-
-    # Garantir que a coluna dispositivo_nome exista na tabela registros_producao
-    # (armazena o nome do dispositivo Raspberry diretamente no registro)
-    try:
-        DatabaseConnection.ensure_dispositivo_nome_column()
-    except Exception:
-        pass
-
-    # Garantir que a tabela funcionarios_turnos exista
-    # (permite que um funcionário tenha múltiplos turnos)
-    try:
-        DatabaseConnection.ensure_funcionarios_turnos_table()
-    except Exception:
-        pass
-
-    # Garantir que a coluna turno exista na tabela registros_producao
-    # (armazena o turno específico de cada registro)
-    try:
-        DatabaseConnection.ensure_turno_registros_producao()
-    except Exception:
-        pass
-
-    return app, socketio
-
-
-app, socketio = create_app()
+        service = DispositivosService(DispositivosDAO(db))
+        service.ensure_local_registered()
+    finally:
+        db.close()
 
 if __name__ == "__main__":
-    # Config servidor/WebSocket (env): FLASK_HOST, FLASK_PORT, FLASK_ENV, SOCKETIO_ASYNC_MODE (ver websocket_manager)
-    host = os.getenv("FLASK_HOST", "0.0.0.0")
-    port = int(os.getenv("FLASK_PORT", 8000))
-    debug = os.getenv("FLASK_ENV") != "production"
-
-    socketio.run(
-        app,
-        host=host,
-        port=port,
-        debug=debug,
-        allow_unsafe_werkzeug=True,
-        use_reloader=False
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8001)

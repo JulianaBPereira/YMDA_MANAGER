@@ -1,85 +1,87 @@
-import { createContext, useContext, useState } from 'react';
-import type { ReactNode } from 'react';
-import { usuariosAPI } from '../api/api';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-export type UserRole = 'admin' | 'operador' | 'master';
+type Role = 'admin' | 'operador' | 'master';
 
-interface User {
-  id: number;
-  usuario_id?: number;
+export type AuthUser = {
+  id: number | string;
+  username: string;
   nome: string;
-  role: UserRole;
-}
+  role: Role;
+};
 
-interface AuthContextType {
-  user: User | null;
-  login: (username: string, senha: string) => Promise<void>;
-  logout: () => void;
+type AuthContextValue = {
+  user: AuthUser | null;
   isOperador: boolean;
   isAdmin: boolean;
   isMaster: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth deve ser usado dentro de AuthProvider');
-  }
-  return context;
+  login: (username: string, senha: string) => Promise<void>;
+  logout: () => void;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(() => {
-    // Recupera usuário do localStorage ao inicializar
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        return JSON.parse(savedUser);
-      } catch {
-        return null;
+const USER_STORAGE_KEY = 'user';
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(USER_STORAGE_KEY);
+      if (stored) {
+        setUser(JSON.parse(stored));
       }
+    } catch {
+      // ignore
     }
-    return null;
-  });
+  }, []);
 
   const login = async (username: string, senha: string) => {
+    // Placeholder: autenticação fake apenas para permitir navegação.
+    // Integre com seu backend aqui quando disponível.
+    const fakeUser: AuthUser = {
+      id: 1,
+      username,
+      nome: username,
+      role: username.toLowerCase() === 'master' ? 'master' : username.toLowerCase() === 'operador' ? 'operador' : 'admin',
+    };
+    setUser(fakeUser);
     try {
-      const userData = await usuariosAPI.login({ username, senha });
-      
-      // Garantir que temos id ou usuario_id
-      const user: User = {
-        id: userData.id || userData.usuario_id,
-        usuario_id: userData.usuario_id || userData.id,
-        nome: userData.nome,
-        role: userData.role
-      };
-      
-      setUser(user);
-      localStorage.setItem('user', JSON.stringify(user));
-    } catch (error) {
-      throw error;
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(fakeUser));
+    } catch {
+      // ignore
     }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    try {
+      window.localStorage.removeItem(USER_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
   };
 
-  const isOperador = user?.role === 'operador';
-  const isAdmin = user?.role === 'admin';
-  const isMaster = user?.role === 'master';
+  const value: AuthContextValue = useMemo(() => {
+    const role = (user?.role ?? '') as Role | '';
+    return {
+      user,
+      isOperador: role === 'operador',
+      isAdmin: role === 'admin',
+      isMaster: role === 'master',
+      login,
+      logout,
+    };
+  }, [user]);
 
-  return (
-    <AuthContext.Provider value={{ user, login, logout, isOperador, isAdmin, isMaster }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return ctx;
+}
 

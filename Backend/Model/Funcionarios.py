@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from ..database import Base
+from ..Database.database import Base
 
 
 class Funcionario(Base):
@@ -13,6 +13,7 @@ class Funcionario(Base):
     nome = Column(String, nullable=False)
     ativo = Column(Boolean, default=True)
     tag_temporaria = Column(String, nullable=True)
+    expiracao_tag_temporaria = Column(DateTime, nullable=True)  # quando a tag temporária vence (10h após criação)
     data_criacao = Column(DateTime, default=datetime.utcnow)
     data_remocao = Column(DateTime, nullable=True)
 

@@ -1,174 +1,78 @@
-from flask import Blueprint, jsonify, request
-from Backend.services import funcionarios_service
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from ..Database.database import get_db
+from ..Services.funcionarios_service import FuncionarioService
+from ..Schema.funcionariosSchema import (
+    FuncionarioCreate,
+    FuncionarioUpdate,
+    FuncionarioResponse,
+    TagTemporariaSet,
+)
 
-funcionarios_bp = Blueprint('funcionarios', __name__, url_prefix='/api/funcionarios')
+router = APIRouter(prefix="/funcionarios", tags=["Funcionários"])
 
 
-# LISTAR ATIVOS
-@funcionarios_bp.route('', methods=['GET'])
-def listar_funcionarios():
+@router.get("/", response_model=list[FuncionarioResponse])
+def listar(db: Session = Depends(get_db)):
+    service = FuncionarioService(db)
+    return service.listar()
+
+
+@router.get("/{funcionario_id}", response_model=FuncionarioResponse)
+def buscar(funcionario_id: int, db: Session = Depends(get_db)):
     try:
-        funcionarios = funcionarios_service.listar_funcionarios()
-        return jsonify(funcionarios)
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        service = FuncionarioService(db)
+        return service.buscar_por_id(funcionario_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
-# LISTAR TODOS
-@funcionarios_bp.route('/todos', methods=['GET'])
-def listar_todos_funcionarios():
+@router.post("/", response_model=FuncionarioResponse, status_code=201)
+def cadastrar(dados: FuncionarioCreate, db: Session = Depends(get_db)):
     try:
-        funcionarios = funcionarios_service.listar_todos_funcionarios()
-        return jsonify(funcionarios)
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        service = FuncionarioService(db)
+        return service.cadastrar(dados)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-# CRIAR
-@funcionarios_bp.route('', methods=['POST'])
-def criar_funcionario():
+@router.put("/{funcionario_id}", response_model=FuncionarioResponse)
+def atualizar(funcionario_id: int, dados: FuncionarioUpdate, db: Session = Depends(get_db)):
     try:
-        data = request.get_json()
+        service = FuncionarioService(db)
+        return service.atualizar(funcionario_id, dados)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-        if not data:
-            return jsonify({"erro": "Dados não enviados"}), 400
 
-        matricula = data.get('matricula')
-        nome = data.get('nome')
-        ativo = data.get('ativo', True)
-        # Aceita tanto 'tag' quanto 'tag_id' para compatibilidade
-        tag_id = data.get('tag_id') or data.get('tag')
-        turno = data.get('turno')  # Compatibilidade: aceita turno único
-        turnos = data.get('turnos')  # Novo: aceita array de turnos
-        operacoes_ids = data.get('operacoes_ids', [])
-
-        if not matricula or not nome:
-            return jsonify({"erro": "Matrícula e nome são obrigatórios"}), 400
-
-        funcionario = funcionarios_service.criar_funcionario(
-            matricula,
-            nome,
-            ativo,
-            tag_id,
-            turno,
-            turnos,
-            operacoes_ids if operacoes_ids else None
-        )
-
-        return jsonify(funcionario), 201
-
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-
-# EDITAR
-@funcionarios_bp.route('/<int:funcionario_id>', methods=['PUT'])
-def atualizar_funcionario(funcionario_id):
+@router.delete("/{funcionario_id}", status_code=204)
+def deletar(funcionario_id: int, db: Session = Depends(get_db)):
     try:
-        data = request.get_json()
+        service = FuncionarioService(db)
+        service.deletar(funcionario_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-        if not data:
-            return jsonify({"erro": "Dados não enviados"}), 400
-
-        nome = data.get('nome')
-        ativo = data.get('ativo', True)
-        # Aceita tanto 'tag' quanto 'tag_id' para compatibilidade
-        tag_id = data.get('tag_id') or data.get('tag')
-        turno = data.get('turno')  # Compatibilidade: aceita turno único
-        turnos = data.get('turnos')  # Novo: aceita array de turnos
-        operacoes_ids = data.get('operacoes_ids')
-
-        if not nome:
-            return jsonify({"erro": "Nome é obrigatório"}), 400
-
-        # Buscar dados anteriores para o log
-        funcionarios_anteriores = funcionarios_service.listar_todos_funcionarios()
-        funcionario_anterior = next((f for f in funcionarios_anteriores if f.get('id') == funcionario_id), None)
-
-        funcionario = funcionarios_service.atualizar_funcionario(
-            funcionario_id,
-            nome,
-            ativo,
-            tag_id,
-            turno,
-            turnos,
-            operacoes_ids if operacoes_ids is not None else None
-        )
-
-        return jsonify(funcionario)
-
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-
-
-# DELETAR
-@funcionarios_bp.route('/<int:funcionario_id>', methods=['DELETE'])
-def deletar_funcionario(funcionario_id):
+@router.post("/{funcionario_id}/tag-temporaria", response_model=FuncionarioResponse)
+def adicionar_tag_temporaria(funcionario_id: int, dados: TagTemporariaSet, db: Session = Depends(get_db)):
     try:
-        # Buscar dados do funcionário antes de deletar
-        funcionarios_anteriores = funcionarios_service.listar_todos_funcionarios()
-        funcionario_anterior = next((f for f in funcionarios_anteriores if f.get('id') == funcionario_id), None)
-
-        funcionarios_service.deletar_funcionario(funcionario_id)
-
-        return jsonify({"mensagem": "Funcionário removido com sucesso"})
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        service = FuncionarioService(db)
+        return service.adicionar_tag_temporaria(funcionario_id, dados.tag_temporaria)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-# BUSCAR POR TAG
-@funcionarios_bp.route('/tag/<string:tag_id>', methods=['GET'])
-def buscar_por_tag(tag_id):
+@router.delete("/{funcionario_id}/tag-temporaria", response_model=FuncionarioResponse)
+def remover_tag_temporaria(funcionario_id: int, db: Session = Depends(get_db)):
     try:
-        funcionario = funcionarios_service.buscar_funcionario_por_tag(tag_id)
-
-        if not funcionario:
-            return jsonify({"erro": "Tag não encontrada"}), 404
-
-        return jsonify(funcionario)
-
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        service = FuncionarioService(db)
+        return service.remover_tag_temporaria(funcionario_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-# BUSCAR POR MATRÍCULA
-@funcionarios_bp.route('/matricula/<string:matricula>', methods=['GET'])
-def buscar_por_matricula(matricula):
-    try:
-        funcionario = funcionarios_service.buscar_por_matricula(matricula)
-
-        if not funcionario:
-            return jsonify({"erro": "Matrícula não encontrada"}), 404
-
-        return jsonify(funcionario)
-
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-
-
-# BUSCAR OPERAÇÕES HABILITADAS
-@funcionarios_bp.route('/<int:funcionario_id>/operacoes-habilitadas', methods=['GET'])
-def buscar_operacoes_habilitadas(funcionario_id):
-    try:
-        operacoes = funcionarios_service.buscar_operacoes_habilitadas(funcionario_id)
-        return jsonify(operacoes)
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-
-
-# ATUALIZA OPERAÇÕES HABILITADAS
-@funcionarios_bp.route('/<int:funcionario_id>/operacoes-habilitadas', methods=['PUT'])
-def atualizar_operacoes_habilitadas(funcionario_id):
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({"erro": "Dados não enviados"}), 400
-        
-        operacoes_ids = data.get('operacoes_ids', [])
-        
-        funcionarios_service.atualizar_operacoes_habilitadas(funcionario_id, operacoes_ids)
-        
-        operacoes = funcionarios_service.buscar_operacoes_habilitadas(funcionario_id)
-        return jsonify(operacoes)
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+@router.delete("/tag-temporaria/limpar-expiradas", status_code=200)
+def limpar_tags_expiradas(db: Session = Depends(get_db)):
+    service = FuncionarioService(db)
+    total = service.limpar_tags_expiradas()
+    return {"mensagem": f"{total} tag(s) expirada(s) removida(s) com sucesso."}

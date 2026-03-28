@@ -6,7 +6,6 @@ import ModalEditarUsuario from '../Components/Usuarios/ModalEditarUsuario'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
-import { usuariosAPI } from '../api/api'
 
 interface Usuario {
     id: number
@@ -58,28 +57,8 @@ const Usuarios = () => {
 
     const carregarUsuarios = async () => {
         setCarregando(true)
-        try {
-            const dados = await usuariosAPI.listarTodos()
-            
-            if (!Array.isArray(dados)) {
-                setUsuarios([])
-                return
-            }
-            
-            const dadosNormalizados = dados.map((user: any) => ({
-                ...user,
-                id: user.id || user.usuario_id,
-                ativo: user.ativo !== undefined ? user.ativo : true
-            }))
-            setUsuarios(dadosNormalizados)
-        } catch (error: any) {
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao carregar usuários: ${error?.message || 'Erro desconhecido'}`)
-            setModalErroAberto(true)
-            setUsuarios([])
-        } finally {
-            setCarregando(false)
-        }
+        setUsuarios([])
+        setCarregando(false)
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -88,35 +67,10 @@ const Usuarios = () => {
     }
 
     const handleConfirmarCadastro = async () => {
-        try {
-            await usuariosAPI.criar({
-                username,
-                nome,
-                senha,
-                role,
-                ativo
-            })
-            
-            setUsername('')
-            setNome('')
-            setSenha('')
-            setRole('admin')
-            setAtivo(true)
-            
-            if (abaAtiva === 'listar') {
-                await carregarUsuarios()
-            }
-            
-            fecharModal()
-            setMensagemSucesso('Usuário cadastrado com sucesso!')
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            const errorMessage = error?.message || 'Erro ao cadastrar usuário. Tente novamente.'
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao cadastrar usuário: ${errorMessage}`)
-            setModalErroAberto(true)
-            fecharModal()
-        }
+        setTituloErro('Indisponível')
+        setMensagemErro('Cadastro de usuário desabilitado enquanto o novo backend é construído.')
+        setModalErroAberto(true)
+        fecharModal()
     }
 
     const handleEditarUsuario = (usuario: Usuario) => {
@@ -141,20 +95,10 @@ const Usuarios = () => {
             return
         }
         
-        try {
-            await usuariosAPI.atualizar(usuarioId, dadosParaSalvar)
-            await carregarUsuarios()
-            setModalConfirmarEdicaoAberto(false)
-            setModalEditarAberto(false)
-            setMensagemSucesso('Usuário atualizado com sucesso!')
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            const errorMessage = error?.message || 'Erro ao atualizar usuário. Tente novamente.'
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao atualizar usuário: ${errorMessage}`)
-            setModalErroAberto(true)
-            setModalConfirmarEdicaoAberto(false)
-        }
+        setTituloErro('Indisponível')
+        setMensagemErro('Atualização de usuário desabilitada enquanto o novo backend é construído.')
+        setModalErroAberto(true)
+        setModalConfirmarEdicaoAberto(false)
     }
 
     const handleExcluirUsuario = (usuario: Usuario) => {
@@ -179,19 +123,10 @@ const Usuarios = () => {
             return
         }
         
-        try {
-            await usuariosAPI.deletar(usuarioId)
-            await carregarUsuarios()
-            fecharModal()
-            setMensagemSucesso('Usuário excluído com sucesso!')
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            const errorMessage = error?.message || 'Erro ao excluir usuário. Tente novamente.'
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao excluir usuário: ${errorMessage}`)
-            setModalErroAberto(true)
-            fecharModal()
-        }
+        setTituloErro('Indisponível')
+        setMensagemErro('Exclusão de usuário desabilitada enquanto o novo backend é construído.')
+        setModalErroAberto(true)
+        fecharModal()
     }
 
     const handleConfirmarMudancaStatus = async () => {
@@ -206,25 +141,10 @@ const Usuarios = () => {
             return
         }
         
-        try {
-            const novoStatus = !usuarioSelecionado.ativo
-            await usuariosAPI.atualizar(usuarioId, {
-                username: usuarioSelecionado.username,
-                nome: usuarioSelecionado.nome,
-                role: usuarioSelecionado.role,
-                ativo: novoStatus
-            })
-            await carregarUsuarios()
-            fecharModal()
-            setMensagemSucesso(`Usuário ${novoStatus ? 'ativado' : 'desativado'} com sucesso!`)
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            const errorMessage = error?.message || 'Erro ao alterar status do usuário. Tente novamente.'
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao alterar status: ${errorMessage}`)
-            setModalErroAberto(true)
-            fecharModal()
-        }
+        setTituloErro('Indisponível')
+        setMensagemErro('Alteração de status desabilitada enquanto o novo backend é construído.')
+        setModalErroAberto(true)
+        fecharModal()
     }
 
     const indiceInicio = (paginaAtual - 1) * itensPorPagina

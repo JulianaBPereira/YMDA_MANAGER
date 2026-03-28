@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from ..database import Base
+from ..Database.database import Base
 
 class Posto(Base):
     __tablename__ = 'postos'

@@ -15,16 +15,8 @@ export default defineConfig({
         target: process.env.VITE_API_BACKEND_URL || 
                 (process.env.DOCKER_ENV === 'true' ? 'http://backend:8000' : 'http://localhost:8000'),
         changeOrigin: true,
-        secure: false,
-        ws: true, // WebSocket support para Socket.IO
-      },
-      '/socket.io': {
-        // Proxy para WebSocket do Socket.IO
-        target: process.env.VITE_API_BACKEND_URL || 
-                (process.env.DOCKER_ENV === 'true' ? 'http://backend:8000' : 'http://localhost:8000'),
-        ws: true,
-        changeOrigin: true,
-      },
+        secure: false
+      }
     },
   },
   build: {

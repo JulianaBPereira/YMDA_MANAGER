@@ -4,16 +4,12 @@ import Registros from "./Pages/Registros";
 import Dashboard from "./Pages/Dashboard";
 import Login from "./Pages/Login";
 import LoginAdmin from "./Pages/LoginAdmin";
-import LeitorIHM from "./Pages/IHM/Leitor";
-import OperacaoIHM from "./Pages/IHM/Operacao";
-import LeitorFinalizar from "./Pages/IHM/LeitorFinalizar";
-import FinalizarProducao from "./Pages/IHM/FinalizarProducao";
 import ProtectedRoute from "./Components/ProtectedRoute";
 import Linhas from "./Pages/Linhas";
 import Postos from "./Pages/Postos";
 import Operacoes from "./Pages/Operacoes";
 import Usuarios from "./Pages/Usuarios";
-import CadastroProdutoModelo from "./Pages/CadastroProdutoModelo";
+import Modelos from "./Pages/Modelos";
 import ListagemPecas from "./Pages/ListagemPecas";
 import ListagemProdutosModelos from "./Pages/ListagemProdutosModelos";
 import CadastroUsuario from "./Pages/CadastroUsuario";
@@ -49,7 +45,7 @@ function App() {
         path="/cadastro-produto-modelo" 
         element={
           <ProtectedRoute onlyAdmin>
-            <CadastroProdutoModelo />
+            <Modelos />
           </ProtectedRoute>
         } 
       />
@@ -117,42 +113,7 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route     
-      />
       
-      {/* Rotas IHM - apenas para operadores (fluxo sequencial) */}
-      <Route 
-        path="/ihm/leitor" 
-        element={
-          <ProtectedRoute onlyOperador>
-            <LeitorIHM />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/ihm/operacao" 
-        element={
-          <ProtectedRoute onlyOperador>
-            <OperacaoIHM />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/ihm/leitor-finalizar" 
-        element={
-          <ProtectedRoute onlyOperador>
-            <LeitorFinalizar />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/ihm/finalizar-producao" 
-        element={
-          <ProtectedRoute onlyOperador>
-            <FinalizarProducao />
-          </ProtectedRoute>
-        }
-      />
       
       {/* Redireciona rotas não encontradas */}
       <Route path="*" element={<Navigate to="/" replace />} />

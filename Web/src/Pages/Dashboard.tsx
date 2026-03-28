@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
-import Card from '../Components/dashboard/Card';
+
 import MenuLateral from '../Components/MenuLateral/MenuLateral';
 import TopBar from '../Components/topBar/TopBar';
-import { dashboardAPI } from '../api/api';
+
 
 interface CardProps {
   posto_id: number;
@@ -34,95 +33,15 @@ const Dashboard = () => {
   const [processoSelecionado, setProcessoSelecionado] = useState('sub_linha_chassi');
   const [selectAberto, setSelectAberto] = useState(false);
   const [sublinhas, setSublinhas] = useState<Sublinha[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const socketRef = useRef<Socket | null>(null);
+  const [carregando, setCarregando] = useState(false);
   const dadosCarregados = useRef(false);
 
-  // Configuração Inicial do WebSocket
+  // Removido: WebSocket e chamadas ao backend antigo
   useEffect(() => {
-    carregarDadosDashboard();
-    let socketUrl: string;
-    
-    if (import.meta.env.VITE_API_URL) {
-      socketUrl = import.meta.env.VITE_API_URL.replace('/api', '');
-    } else if (import.meta.env.DEV) {
-      socketUrl = `http://${window.location.hostname}:8000`;
-    } else {
-      socketUrl = window.location.origin;
-    }
-    
-    const socket = io(socketUrl, {
-      path: '/socket.io',
-      transports: ['polling', 'websocket'],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-      timeout: 20000,
-    });
-
-    socketRef.current = socket;
-
-    socket.on('connect_error', (error) => {
-      console.warn('[Dashboard] Erro de conexão Socket.IO:', error.message);
-    });
-
-    socket.on('dashboard_update', (dados: any) => {
-      try {
-        if (dados && typeof dados === 'object') {
-          if (dados.sublinhas && Array.isArray(dados.sublinhas)) {
-            setSublinhas(dados.sublinhas);
-          }
-        }
-      } catch (error) {
-        console.error('[Dashboard] Erro ao processar atualização:', error);
-      }
-      if (!dadosCarregados.current) {
-        dadosCarregados.current = true;
-        setCarregando(false);
-      }
-    });
-
-    const pollingInterval = setInterval(() => {
-      atualizarDadosSilencioso();
-    }, 30000);
-
-    return () => {
-      socket.disconnect();
-      clearInterval(pollingInterval);
-    };
+    setCarregando(false);
   }, []);
 
-  // Carregamento inicial — mostra "carregando" apenas na primeira vez
-  const carregarDadosDashboard = async () => {
-    try {
-      const dados = await dashboardAPI.obterDados();
-
-      if (dados.sublinhas) {
-        setSublinhas(dados.sublinhas);
-      }
-      dadosCarregados.current = true;
-    } catch (error) {
-      console.error('Erro ao carregar dados do dashboard:', error);
-      setTimeout(() => {
-        carregarDadosDashboard();
-      }, 5000);
-    } finally {
-      setCarregando(false);
-    }
-  };
-
-  const atualizarDadosSilencioso = async () => {
-    try {
-      const dados = await dashboardAPI.obterDados();
-
-      if (dados.sublinhas) {
-        setSublinhas(dados.sublinhas);
-      }
-    } catch (error) {
-      // Silencioso — ignora erro no polling
-    }
-  };
+  // Removido: funções que chamavam o backend antigo
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {

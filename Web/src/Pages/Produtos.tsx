@@ -4,7 +4,7 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import CardProduto from '../Components/Produtos/CardProduto'
 import ModalFormulario from '../Components/Compartilhados/ModalFormulario'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
-import { produtosAPI } from '../api/api';
+
 
 interface Produto {
     id: number
@@ -24,10 +24,9 @@ const Produtos = () => {
     useEffect(() => {
         const carregarProdutos = async () => {
             try {
-                const dados = await produtosAPI.listar()
-                setProdutos(dados)
+                // Backend antigo removido: lista vazia
+                setProdutos([])
             } catch (err) {
-                console.error('Erro ao carregar produtos:', err)
                 setErro(err instanceof Error ? err.message : 'Erro ao carregar produtos')
             } finally {
                 setCarregado(true)
@@ -39,23 +38,9 @@ const Produtos = () => {
     const handleAdicionarProduto = async (novoProduto: Record<string, any>) => {
         try {
             setErro(null)
-            if (produtoEditando) {
-                // edita
-                await produtosAPI.atualizar(produtoEditando.id, {
-                    nome: novoProduto.nome,
-                })
-            } else {
-                // Cria
-                await produtosAPI.criar({
-                    nome: novoProduto.nome,
-                })
-            }
-            // Recarregar produtos após salvar
-            const dados = await produtosAPI.listar()
-            setProdutos(dados)
-            setModalAberto(false)
+            // Backend antigo removido: criar/atualizar desabilitado
+            setErro('Salvar desabilitado enquanto o novo backend é construído.')
         } catch (err) {
-            console.error('Erro ao salvar produto:', err)
             setErro(err instanceof Error ? err.message : 'Erro ao salvar produto')
         }
     }
@@ -82,12 +67,9 @@ const Produtos = () => {
         }
         try {
             setErro(null)
-            await produtosAPI.deletar(produtoId)
-            // Recarregar produtos após deletar
-            const dados = await produtosAPI.listar()
-            setProdutos(dados)
+            // Backend antigo removido: deleção desabilitada
+            setErro('Remoção desabilitada enquanto o novo backend é construído.')
         } catch (err) {
-            console.error('Erro ao remover produto:', err)
             setErro(err instanceof Error ? err.message : 'Erro ao remover produto')
         }
     }

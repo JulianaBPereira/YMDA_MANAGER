@@ -24,12 +24,13 @@ CREATE TABLE funcionarios (
     nome VARCHAR(255) NOT NULL,
     ativo BOOLEAN DEFAULT TRUE,
     tag_temporaria VARCHAR(255),
+    expiracao_tag_temporaria TIMESTAMP,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_remocao TIMESTAMP
 );
 
 -- =========================
--- TURNOS (simples)
+-- TURNOS
 -- =========================
 CREATE TABLE turnos (
     id SERIAL PRIMARY KEY,
@@ -40,8 +41,8 @@ CREATE TABLE funcionario_turnos (
     funcionario_id INTEGER,
     turno_id INTEGER,
     PRIMARY KEY (funcionario_id, turno_id),
-    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id),
-    FOREIGN KEY (turno_id) REFERENCES turnos(id)
+    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (turno_id) REFERENCES turnos(id) ON DELETE CASCADE
 );
 
 -- =========================
@@ -49,18 +50,19 @@ CREATE TABLE funcionario_turnos (
 -- =========================
 CREATE TABLE linhas (
     id SERIAL PRIMARY KEY,
-    nome VARCHAR(255) NOT NULL
+    nome VARCHAR(255) NOT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE sublinhas (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     linha_id INTEGER,
-    FOREIGN KEY (linha_id) REFERENCES linhas(id)
+    FOREIGN KEY (linha_id) REFERENCES linhas(id) ON DELETE CASCADE
 );
 
 -- =========================
--- DISPOSITIVOS (Raspberry)
+-- DISPOSITIVOS
 -- =========================
 CREATE TABLE dispositivos_raspberry (
     id SERIAL PRIMARY KEY,
@@ -80,8 +82,8 @@ CREATE TABLE postos (
     dispositivo_id INTEGER,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_remocao TIMESTAMP,
-    FOREIGN KEY (sublinha_id) REFERENCES sublinhas(id),
-    FOREIGN KEY (dispositivo_id) REFERENCES dispositivos_raspberry(id)
+    FOREIGN KEY (sublinha_id) REFERENCES sublinhas(id) ON DELETE CASCADE,
+    FOREIGN KEY (dispositivo_id) REFERENCES dispositivos_raspberry(id) ON DELETE SET NULL
 );
 
 -- =========================
@@ -98,7 +100,7 @@ CREATE TABLE modelos (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     produto_id INTEGER,
-    FOREIGN KEY (produto_id) REFERENCES produtos(id)
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL
 );
 
 CREATE TABLE pecas (
@@ -107,13 +109,12 @@ CREATE TABLE pecas (
     codigo VARCHAR(255) NOT NULL
 );
 
--- relação modelo → peças
 CREATE TABLE modelo_pecas (
     modelo_id INTEGER,
     peca_id INTEGER,
     PRIMARY KEY (modelo_id, peca_id),
-    FOREIGN KEY (modelo_id) REFERENCES modelos(id),
-    FOREIGN KEY (peca_id) REFERENCES pecas(id)
+    FOREIGN KEY (modelo_id) REFERENCES modelos(id) ON DELETE CASCADE,
+    FOREIGN KEY (peca_id) REFERENCES pecas(id) ON DELETE CASCADE
 );
 
 -- =========================
@@ -130,20 +131,19 @@ CREATE TABLE operacoes (
     data_fim DATE,
     horario_inicio TIME,
     horario_fim TIME,
-    FOREIGN KEY (sublinha_id) REFERENCES sublinhas(id),
-    FOREIGN KEY (posto_id) REFERENCES postos(id),
-    FOREIGN KEY (produto_id) REFERENCES produtos(id),
-    FOREIGN KEY (modelo_id) REFERENCES modelos(id),
-    FOREIGN KEY (dispositivo_id) REFERENCES dispositivos_raspberry(id)
+    FOREIGN KEY (sublinha_id) REFERENCES sublinhas(id) ON DELETE CASCADE,
+    FOREIGN KEY (posto_id) REFERENCES postos(id) ON DELETE SET NULL,
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL,
+    FOREIGN KEY (modelo_id) REFERENCES modelos(id) ON DELETE SET NULL,
+    FOREIGN KEY (dispositivo_id) REFERENCES dispositivos_raspberry(id) ON DELETE SET NULL
 );
 
--- múltiplas peças por operação
 CREATE TABLE operacao_pecas (
     operacao_id INTEGER,
     peca_id INTEGER,
     PRIMARY KEY (operacao_id, peca_id),
-    FOREIGN KEY (operacao_id) REFERENCES operacoes(id),
-    FOREIGN KEY (peca_id) REFERENCES pecas(id)
+    FOREIGN KEY (operacao_id) REFERENCES operacoes(id) ON DELETE CASCADE,
+    FOREIGN KEY (peca_id) REFERENCES pecas(id) ON DELETE CASCADE
 );
 
 -- =========================
@@ -157,27 +157,23 @@ CREATE TABLE registros_producao (
     data_fim DATE,
     horario_inicio TIME,
     horario_fim TIME,
-    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id),
-    FOREIGN KEY (operacao_id) REFERENCES operacoes(id)
+    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (operacao_id) REFERENCES operacoes(id) ON DELETE CASCADE
 );
 
 -- =========================
 -- USUÁRIOS PADRÃO
 -- =========================
-
--- admin
 INSERT INTO usuarios (username, senha_hash, nome, role, ativo)
-VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'Administrador', 'admin', TRUE)
+VALUES ('admin', '$2b$12$jNQyjyeS8PzWSxieV3V7L.x/z0bfnfLQCx/scYw8nBjS9oYfwcuAm', 'Administrador', 'admin', TRUE)
 ON CONFLICT (username) DO NOTHING;
 
--- operador
 INSERT INTO usuarios (username, senha_hash, nome, role, ativo)
-VALUES ('operador', '1725165c9a0b3698a3d01016e0d8205155820b8d7f21835ca64c0f81c728d880', 'Operador RFID', 'operador', TRUE)
+VALUES ('operador', '$2b$12$EzYZjNtADUxKIe95LVKgIOq.NekkfNi.6HyhBUCIVEI4QCpV.VgF6', 'Operador RFID', 'operador', TRUE)
 ON CONFLICT (username) DO NOTHING;
 
--- master
 INSERT INTO usuarios (username, senha_hash, nome, role, ativo)
-VALUES ('master', 'e7bc2f973afb8dfaf00fadfb19596741108be08ab4a107c6a799c429b684c64a', 'Master User', 'master', TRUE)
+VALUES ('master', '$2b$12$FA9ZE1GLjBW244.ypLJOY.Ej6P4Sw2sfv1LcWylqvB5G/8ZHoOJPu', 'Master User', 'master', TRUE)
 ON CONFLICT (username) DO UPDATE SET
     senha_hash = EXCLUDED.senha_hash,
     nome = EXCLUDED.nome,

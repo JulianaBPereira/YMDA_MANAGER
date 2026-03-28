@@ -1,6 +1,8 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from ..database import Base
+from ..Database.database import Base
 
 
 class Linha(Base):
@@ -8,11 +10,13 @@ class Linha(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(255), nullable=False)
+    data_criacao = Column(DateTime, default=datetime.utcnow)
 
     # uma linha tem várias sublinhas
     sublinhas = relationship(
         "Sublinha", 
-        back_populates="linha"
+        back_populates="linha",
+        cascade="all, delete-orphan"
         )
 
 
@@ -27,4 +31,10 @@ class Sublinha(Base):
     linha = relationship(
         "Linha", 
         back_populates="sublinhas"
+        )
+
+    # sublinha possui várias operações (lado inverso em Operacao.sublinha)
+    operacoes = relationship(
+        "Operacao",
+        back_populates="sublinha"
         )

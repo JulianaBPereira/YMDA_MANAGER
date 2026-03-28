@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from database import Base
+from ..Database.database import Base
 
 
 class Produto(Base):
@@ -45,6 +45,13 @@ class Peca(Base):
     modelos = relationship(
         "Modelo",
         secondary="modelo_pecas",
+        back_populates="pecas"
+    )
+
+    # peça pode estar em várias operações (N:N via operacao_pecas)
+    operacoes = relationship(
+        "Operacao",
+        secondary="operacao_pecas",
         back_populates="pecas"
     )
 

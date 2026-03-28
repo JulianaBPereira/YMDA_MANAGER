@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime    
-from ..database import Base
+from ..Database.database import Base
 
 class DispositivoRaspberry(Base):
     __tablename__ = 'dispositivos_raspberry'

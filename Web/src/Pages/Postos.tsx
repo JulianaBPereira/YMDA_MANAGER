@@ -6,7 +6,6 @@ import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
-import { postosAPI, sublinhasAPI } from '../api/api'
 
 interface Posto {
     posto_id: number
@@ -60,62 +59,17 @@ const Postos = () => {
     }, [abaAtiva])
 
     const carregarSublinhas = async () => {
-        try {
-            const dados = await sublinhasAPI.listarTodos(true)
-            setSublinhas(dados.map((s: any) => ({
-                sublinha_id: s.sublinha_id,
-                linha_id: s.linha_id,
-                nome: s.nome,
-                linha_nome: s.linha_nome
-            })))
-            if (dados.length > 0 && sublinhaId === 0) {
-                setSublinhaId(dados[0].sublinha_id)
-            }
-        } catch (error) {
-            console.error('Erro ao carregar sublinhas:', error)
-        }
+        setSublinhas([])
     }
 
     const carregarTotens = async () => {
-        try {
-            // Buscar usuários dos dispositivos Raspberry ao invés de totens
-            const dados = await postosAPI.listarUsuariosRaspberry()
-            setTotens(dados)
-            if (dados.length > 0 && totenId === 0) {
-                setTotenId(dados[0].id)
-            }
-        } catch (error) {
-            console.error('Erro ao carregar usuários Raspberry:', error)
-        }
+        setTotens([])
     }
 
     const carregarPostos = async () => {
         setCarregando(true)
-        try {
-            const dados = await postosAPI.listarTodos()
-            
-            if (!Array.isArray(dados)) {
-                setPostos([])
-                return
-            }
-            
-            const dadosNormalizados = dados.map((p: any) => ({
-                posto_id: p.posto_id,
-                nome: p.nome || '',
-                sublinha_id: p.sublinha_id,
-                toten_id: p.toten_id,
-                serial: p.serial || '',
-                totem_nome: p.totem_nome || ''
-            }))
-            setPostos(dadosNormalizados)
-        } catch (error: any) {
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro ao carregar postos: ${error?.message || 'Erro desconhecido'}`)
-            setModalErroAberto(true)
-            setPostos([])
-        } finally {
-            setCarregando(false)
-        }
+        setPostos([])
+        setCarregando(false)
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -142,46 +96,9 @@ const Postos = () => {
             return
         }
 
-        try {
-            if (postoEditando) {
-                // Atualizar posto existente
-                await postosAPI.atualizar(postoEditando.posto_id, {
-                    nome: nome.trim(),
-                    sublinha_id: sublinhaId,
-                    toten_id: totenId
-                })
-                setPostoEditando(null)
-                setMensagemSucesso('Posto atualizado com sucesso!')
-                setModalSucessoAberto(true)
-            } else {
-                // Criar novo posto
-                await postosAPI.criar({
-                    nome: nome.trim(),
-                    sublinha_id: sublinhaId,
-                    toten_id: totenId
-                })
-                setMensagemSucesso('Posto cadastrado com sucesso!')
-                setModalSucessoAberto(true)
-            }
-            
-            // Limpar formulário
-            setNome('')
-            if (sublinhas.length > 0) {
-                setSublinhaId(sublinhas[0].sublinha_id)
-            }
-            if (totens.length > 0) {
-                setTotenId(totens[0].id)
-            }
-            
-            if (abaAtiva === 'listar') {
-                await carregarPostos()
-            }
-        } catch (error: any) {
-            const errorMessage = error?.message || 'Erro ao cadastrar posto. Tente novamente.'
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro: ${errorMessage}`)
-            setModalErroAberto(true)
-        }
+        setTituloErro('Indisponível')
+        setMensagemErro('Salvar/atualizar desabilitado enquanto o novo backend é construído.')
+        setModalErroAberto(true)
     }
 
     const handleEditarPosto = (posto: Posto) => {
@@ -200,18 +117,10 @@ const Postos = () => {
     const handleConfirmarExclusao = async () => {
         if (!postoSelecionado) return
         
-        try {
-            await postosAPI.deletar(postoSelecionado.posto_id)
-            await carregarPostos()
-            fecharModal()
-            setMensagemSucesso('Posto excluído com sucesso!')
-            setModalSucessoAberto(true)
-        } catch (error: any) {
-            const errorMessage = error?.message || 'Erro ao excluir posto. Tente novamente.'
-            setTituloErro('Erro ao excluir')
-            setMensagemErro(errorMessage)
-            setModalErroAberto(true)
-        }
+        fecharModal()
+        setTituloErro('Indisponível')
+        setMensagemErro('Exclusão desabilitada enquanto o novo backend é construído.')
+        setModalErroAberto(true)
     }
 
     const fecharModal = () => {

@@ -1,99 +1,83 @@
-from flask import Blueprint, request, jsonify
-from Backend.services import modelos_service
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from ..Database.database import get_db
+from ..DAO.modelos_dao import ModeloDAO
+from ..Services.modelos_service import ModeloService
+from ..Schema.modelosSchema import ModeloCreate, ModeloUpdate, ModeloResponse
+from ..Schema.pecasSchema import PecaResponse
 
-modelos_bp = Blueprint('modelos', __name__, url_prefix='/api/modelos')
 
-# LISTAR
-@modelos_bp.route('', methods=['GET'])
-def listar_modelos():
-    try:
-        modelos = modelos_service.listar_modelos()
-        return jsonify(modelos)
-    except Exception as e:
-        print(f'Erro ao listar modelos: {e}')
-        return jsonify({'erro': 'Erro ao buscar modelos'}), 500
-    
-# BUSCAR
-@modelos_bp.route('/<string:codigo>', methods=['GET'])
-def buscar_modelo(codigo):
-    try:
-        modelo = modelos_service.buscar_modelo_por_codigo(codigo)
-        if 'erro' in modelo:
-            return jsonify(modelo), 404
-        return jsonify(modelo)
-    except Exception as e:
-        print(f'Erro ao buscar modelo: {e}')
-        return jsonify({'erro': 'Erro ao buscar modelo'}), 500
+router = APIRouter(prefix="/modelos", tags=["Modelos"])
 
-# CRIAR  
-@modelos_bp.route('', methods=['POST'])
-def criar_modelo():
-    try:
-        data = request.get_json()
 
-        if not data:
-            return jsonify({"erro": "Dados não fornecidos"}), 400
-        
-        codigo = data.get('codigo')
-        nome = data.get('nome')
-        pecas = data.get('pecas', [])
-        produto_id = data.get('produto_id')
+@router.get("/", response_model=list[ModeloResponse])
+def listar(db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	return service.listar()
 
-        if not nome:
-            return jsonify({"erro": "Nome é obrigatório"}), 400
-        
-        if not codigo:
-            codigo = nome
-        
-        resultado = modelos_service.criar_modelo(codigo, nome, pecas, produto_id)
 
-        if 'erro' in resultado:
-            return jsonify(resultado), 400
-        
-        return jsonify(resultado)
-    except Exception as e:
-        print(f"Erro ao criar modelo: {e}")
-        return jsonify({"erro": "Erro ao criar modelo"}), 500
+@router.get("/por-produto/{produto_id}", response_model=list[ModeloResponse])
+def listar_por_produto(produto_id: int, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	return service.listar_por_produto(produto_id)
 
-# ATUALIZAR 
-@modelos_bp.route('/<int:modelo_id>', methods=['PUT'])
-def atualizar_modelo(modelo_id):
-    try:
-        data = request.get_json()
 
-        if not data:
-            return jsonify({"erro": "Dados não fornecidos"}), 400
-        
-        codigo = data.get('codigo')
-        nome = data.get('nome')
-        pecas = data.get('pecas')
-        produto_id = data.get('produto_id')
-        modelos_anteriores = modelos_service.listar_modelos()
-        modelo_anterior = next((m for m in modelos_anteriores if m.get('id') == modelo_id), None)
+@router.get("/{modelo_id}", response_model=ModeloResponse)
+def buscar(modelo_id: int, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	modelo = service.buscar(modelo_id)
+	if not modelo:
+		raise HTTPException(status_code=404, detail="Modelo não encontrado")
+	return modelo
 
-        resultado = modelos_service.atualizar_modelo(modelo_id, codigo, nome, pecas, produto_id)
 
-        if 'erro' in resultado:
-            return jsonify(resultado), 400
-        
-        return jsonify(resultado)
-    except Exception as e:
-        print(f'Erro ao atualizar modelo: {e}')
-        return jsonify({'erro': 'Erro ao atualizar modelo'}), 500
+@router.post("/", response_model=ModeloResponse, status_code=201)
+def criar(body: ModeloCreate, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	try:
+		return service.criar(body.nome, body.produto_id)
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
 
-# DELETAR
-@modelos_bp.route('/<int:modelo_id>', methods=['DELETE'])
-def deletar_modelo(modelo_id):
-    try:
-        modelos_anteriores = modelos_service.listar_modelos()
-        modelo_anterior = next((m for m in modelos_anteriores if m.get('id') == modelo_id), None)
 
-        resultado = modelos_service.deletar_modelo(modelo_id)
+@router.put("/{modelo_id}", response_model=ModeloResponse)
+def atualizar(modelo_id: int, body: ModeloUpdate, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	try:
+		return service.atualizar(modelo_id, body.nome, body.produto_id)
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
 
-        if 'erro' in resultado:
-            return jsonify(resultado), 404
-        
-        return jsonify(resultado)
-    except Exception as e:
-        print(f'Erro ao deletar modelo: {e}')
-        return jsonify({'erro': 'Erro ao deletar modelo'}), 500
+
+@router.delete("/{modelo_id}", status_code=204)
+def deletar(modelo_id: int, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	try:
+		service.deletar(modelo_id)
+	except ValueError as e:
+		raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{modelo_id}/pecas/{peca_id}", response_model=ModeloResponse)
+def adicionar_peca(modelo_id: int, peca_id: int, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	try:
+		return service.adicionar_peca(modelo_id, peca_id)
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/{modelo_id}/pecas/{peca_id}", response_model=ModeloResponse)
+def remover_peca(modelo_id: int, peca_id: int, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	try:
+		return service.remover_peca(modelo_id, peca_id)
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{modelo_id}/pecas", response_model=list[PecaResponse])
+def listar_pecas(modelo_id: int, db: Session = Depends(get_db)):
+	service = ModeloService(ModeloDAO(db))
+	return service.listar_pecas(modelo_id)
+

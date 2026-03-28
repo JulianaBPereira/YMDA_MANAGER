@@ -4,7 +4,9 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
 import ModalFormulario from '../Components/Compartilhados/ModalFormulario'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { modelosAPI, produtosAPI } from '../api/api'
+import { listarProdutos, atualizarProduto, deletarProduto, type Produto as ProdutoApi } from '../services/produtos'
+import { listarModelos, atualizarModelo, deletarModelo, type Modelo as ModeloApi } from '../services/modelos'
+
 
 interface Modelo {
     id: number
@@ -49,25 +51,31 @@ const ListagemProdutosModelos = () => {
         try {
             setCarregando(true)
             setErro(null)
-            
-            const [produtosData, modelosData] = await Promise.all([
-                produtosAPI.listar(),
-                modelosAPI.listarTodos()
+
+            const [produtosResp, modelosResp] = await Promise.all([
+                listarProdutos(),
+                listarModelos(),
             ])
 
-            // Agrupar modelos por produto
-            const produtosComModelos = produtosData.map((produto: Produto) => {
-                const modelosDoProduto = modelosData.filter((modelo: Modelo) => modelo.produto_id === produto.id)
-                return {
-                    ...produto,
-                    modelos: modelosDoProduto
-                }
-            })
+            // Agrupar modelos por produto_id
+            const modelosPorProduto = new Map<number, Modelo[]>()
+            for (const m of modelosResp as ModeloApi[]) {
+                if (!m.produto_id) continue
+                const arr = modelosPorProduto.get(m.produto_id) ?? []
+                arr.push({ id: m.id, nome: m.nome, produto_id: m.produto_id, data_criacao: m.data_criacao })
+                modelosPorProduto.set(m.produto_id, arr)
+            }
+
+            const produtosComModelos: Produto[] = (produtosResp as ProdutoApi[]).map(p => ({
+                id: p.id,
+                nome: p.nome,
+                data_criacao: p.data_criacao,
+                modelos: modelosPorProduto.get(p.id) ?? [],
+            }))
 
             setProdutos(produtosComModelos)
-            setModelos(modelosData)
+            setModelos(modelosResp as Modelo[])
         } catch (err) {
-            console.error('Erro ao carregar dados:', err)
             setErro(err instanceof Error ? err.message : 'Erro ao carregar dados')
         } finally {
             setCarregando(false)
@@ -144,27 +152,22 @@ const ListagemProdutosModelos = () => {
                 return
             }
 
-            // Verificar se o nome já existe em outro produto (ignorando o produto atual)
-            const produtoExistente = produtos.find(p => 
+            // Verificar duplicidade local (antes do request)
+            const produtoExistente = produtos.find(p =>
                 p.nome.toLowerCase() === nomeProduto.toLowerCase() && p.id !== produtoEditando.id
             )
-            
             if (produtoExistente) {
                 setMensagemErroDuplicado(`O produto "${nomeProduto}" já está cadastrado no sistema.`)
                 setModalErroDuplicado(true)
                 return
             }
 
-            await produtosAPI.atualizar(produtoEditando.id, { nome: nomeProduto })
-            
-            await carregarDados()
-            
+            await atualizarProduto(produtoEditando.id, { nome: nomeProduto })
             setModalEdicaoProdutoAberto(false)
             setProdutoEditando(null)
-        } catch (err) {
-            console.error('Erro ao salvar produto:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao salvar produto')
             await carregarDados()
+        } catch (err) {
+            setErro(err instanceof Error ? err.message : 'Erro ao salvar produto')
         }
     }
 
@@ -199,21 +202,21 @@ const ListagemProdutosModelos = () => {
                 return
             }
 
-            const dadosModelo: { nome: string; produto_id?: number } = { nome: nomeModelo }
-            if (dados.produto_id && dados.produto_id !== '') {
-                dadosModelo.produto_id = Number(dados.produto_id)
+            const produtoId = dados.produto_id && dados.produto_id !== ''
+                ? Number(dados.produto_id)
+                : (modeloEditando.produto_id ?? 0)
+
+            if (!produtoId) {
+                setErro('Associe o modelo a um produto.')
+                return
             }
 
-            await modelosAPI.atualizar(modeloEditando.id, dadosModelo)
-            
-            await carregarDados()
-            
+            await atualizarModelo(modeloEditando.id, { nome: nomeModelo, produto_id: produtoId })
             setModalEdicaoModeloAberto(false)
             setModeloEditando(null)
-        } catch (err) {
-            console.error('Erro ao salvar modelo:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao salvar modelo')
             await carregarDados()
+        } catch (err) {
+            setErro(err instanceof Error ? err.message : 'Erro ao salvar modelo')
         }
     }
 
@@ -229,28 +232,14 @@ const ListagemProdutosModelos = () => {
 
     const handleConfirmarDeletar = async () => {
         if (!itemParaDeletar) return
-        
-        try {
-            setErro(null)
-            
-            if (itemParaDeletar.tipo === 'produto') {
-                const produto = itemParaDeletar.item as Produto
-                await produtosAPI.deletar(produto.id)
-            } else {
-                const modelo = itemParaDeletar.item as Modelo
-                await modelosAPI.deletar(modelo.id)
-            }
-            
-            await carregarDados()
-            
-            setModalConfirmacao(false)
-            setItemParaDeletar(null)
-        } catch (err) {
-            console.error('Erro ao deletar:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao deletar')
-            await carregarDados()
-            setModalConfirmacao(false)
+        if (itemParaDeletar.tipo === 'produto') {
+            await deletarProduto((itemParaDeletar.item as Produto).id)
+        } else {
+            await deletarModelo((itemParaDeletar.item as Modelo).id)
         }
+        setModalConfirmacao(false)
+        setItemParaDeletar(null)
+        await carregarDados()
     }
 
     const toggleExpandirProduto = (produtoId: number) => {

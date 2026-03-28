@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { usuariosAPI } from '../api/api'
 
 const CadastroUsuario = () => {
     const navigate = useNavigate()
@@ -32,25 +31,7 @@ const CadastroUsuario = () => {
                 return
             }
 
-            await usuariosAPI.criar({
-                username: username.trim(),
-                nome: nome.trim(),
-                senha: senha.trim(),
-                role,
-                ativo
-            })
-            
-            setSucesso(true)
-            setUsername('')
-            setNome('')
-            setSenha('')
-            setRole('admin')
-            setAtivo(true)
-            
-            // Limpar mensagem de sucesso após 3 segundos
-            setTimeout(() => {
-                setSucesso(false)
-            }, 3000)
+            setErro('Cadastro desabilitado enquanto o novo backend é construído.')
         } catch (error: any) {
             const errorMessage = error?.message || 'Erro ao cadastrar usuário. Tente novamente.'
             setErro(errorMessage)

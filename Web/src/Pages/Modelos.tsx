@@ -4,7 +4,7 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import CardModelo from '../Components/Modelos/CardModelo'
 import ModalModelo from '../Components/Modelos/AdicionarModelo'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
-import { modelosAPI, pecasAPI } from '../api/api'
+ 
 
 interface Peca {
     id: number
@@ -36,43 +36,14 @@ const Modelos = () => {
     }, [])
 
     const carregarModelos = async () => {
-        try {
-            setCarregando(true)
-            setErro(null)
-            const dados = await modelosAPI.listarTodos()
-            setModelos(dados)
-        } catch (err) {
-            console.error('Erro ao carregar modelos:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao carregar modelos')
-        } finally {
-            setCarregando(false)
-        }
+        setCarregando(true)
+        setErro(null)
+        setModelos([])
+        setCarregando(false)
     }
 
     const handleAdicionarModelo = async (novoModelo: { nome: string; pecas?: Array<{codigo: string; nome: string}> }) => {
-        try {
-            setErro(null)
-            if (modeloEditando) {
-                // Modo edição - atualiza o modelo existente
-                await modelosAPI.atualizar(modeloEditando.id, {
-                    nome: novoModelo.nome,
-                    pecas: novoModelo.pecas || []
-                })
-            } else {
-                // Modo criação - cria novo modelo
-                await modelosAPI.criar({
-                    nome: novoModelo.nome,
-                    pecas: novoModelo.pecas || []
-                })
-            }
-            // Recarregar modelos após salvar
-            await carregarModelos()
-            setModalAberto(false)
-            setModeloEditando(null)
-        } catch (err) {
-            console.error('Erro ao salvar modelo:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao salvar modelo')
-        }
+        setErro('Salvar modelo desabilitado enquanto o novo backend é construído.')
     }
 
     const handleEditarModelo = (modelo: Modelo) => {
@@ -94,18 +65,7 @@ const Modelos = () => {
         if (!window.confirm('Tem certeza que deseja remover este modelo?')) {
             return
         }
-        try {
-            setErro(null)
-            await modelosAPI.deletar(modeloId)
-            // Recarregar modelos após deletar
-            await carregarModelos()
-            if (modeloExpandido === modeloId) {
-                setModeloExpandido(null)
-            }
-        } catch (err) {
-            console.error('Erro ao remover modelo:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao remover modelo')
-        }
+        setErro('Remoção de modelo desabilitada enquanto o novo backend é construído.')
     }
 
     const handleToggleExpandir = (modeloId: number) => {
@@ -116,15 +76,7 @@ const Modelos = () => {
         if (!window.confirm('Tem certeza que deseja remover esta peça?')) {
             return
         }
-        try {
-            setErro(null)
-            await pecasAPI.deletar(pecaId)
-            // Recarregar modelos após deletar peça
-            await carregarModelos()
-        } catch (err) {
-            console.error('Erro ao remover peça:', err)
-            setErro(err instanceof Error ? err.message : 'Erro ao remover peça')
-        }
+        setErro('Remoção de peça desabilitada enquanto o novo backend é construído.')
     }
 
     // Calcular modelos da página atual

@@ -5,7 +5,7 @@ import { Paginacao } from '../Components/Compartilhados/paginacao'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { operacoesAPI, produtosAPI, modelosAPI, linhasAPI, postosAPI, sublinhasAPI, pecasAPI } from '../api/api'
+
 
 interface Operacao {
     id: string
@@ -176,150 +176,29 @@ const Operacoes = () => {
     }, [posto, postos])
 
     const carregarDadosDropdowns = async () => {
-        try {
-            // Carregar produtos
-            const produtosData = await produtosAPI.listar()
-            const produtosFormatados = produtosData.map((p: any) => ({ id: p.id, nome: p.nome }))
-            setProdutos(produtosFormatados)
-
-            // Carregar modelos
-            const modelosData = await modelosAPI.listarTodos()
-            const modelosCompleto = modelosData.map((m: any) => ({ 
-                id: m.id, 
-                nome: m.nome,
-                produto_id: m.produto_id 
-            }))
-            setTodosModelos(modelosCompleto)
-            // Se já houver um produto selecionado, filtrar os modelos
-            if (produto) {
-                const produtoSelecionado = produtosFormatados.find(p => p.nome === produto)
-                if (produtoSelecionado) {
-                    setModelos(modelosCompleto.filter(m => m.produto_id === produtoSelecionado.id))
-                } else {
-                    setModelos([])
-                }
-            } else {
-                setModelos([])
-            }
-
-            // Carregar linhas e sublinhas
-            await carregarLinhasComSublinhas()
-
-            // Carregar postos com informações de totem
-            const postosData = await postosAPI.listarTodos()
-            setPostos(postosData.map((p: any) => ({ 
-                posto_id: p.posto_id, 
-                nome: p.nome,
-                toten_id: p.toten_id,
-                totem_nome: p.totem_nome || ''
-            })))
-
-        } catch (error) {
-            console.error('Erro ao carregar dados dos dropdowns:', error)
-        }
+        // Backend antigo removido: inicializar listas vazias
+        setProdutos([])
+        setTodosModelos([])
+        setModelos([])
+        setLinhasComSublinhas([])
+        setPostos([])
     }
 
     const carregarLinhasComSublinhas = async () => {
-        try {
-            // Carregar linhas
-            const linhasData = await linhasAPI.listarTodos()
-            
-            // Carregar sublinhas com informações de linha
-            const sublinhasData = await sublinhasAPI.listarTodos(true)
-            
-            // Combinar linhas e sublinhas
-            const linhasComSublinhasList: LinhaComSublinha[] = []
-            
-            // Adicionar linhas sem sublinhas
-            for (const linha of linhasData) {
-                const sublinhasDaLinha = sublinhasData.filter((s: Sublinha) => s.linha_id === linha.linha_id)
-                
-                if (sublinhasDaLinha.length === 0) {
-                    // Linha sem sublinhas
-                    linhasComSublinhasList.push({
-                        linha_id: linha.linha_id,
-                        linha_nome: linha.nome,
-                        sublinha_id: 0,
-                        sublinha_nome: '',
-                        display: linha.nome
-                    })
-                } else {
-                    // Linha com sublinhas
-                    for (const sublinha of sublinhasDaLinha) {
-                        linhasComSublinhasList.push({
-                            linha_id: linha.linha_id,
-                            linha_nome: linha.nome,
-                            sublinha_id: sublinha.sublinha_id,
-                            sublinha_nome: sublinha.nome,
-                            display: `${linha.nome} - ${sublinha.nome}`
-                        })
-                    }
-                }
-            }
-            
-            setLinhasComSublinhas(linhasComSublinhasList)
-        } catch (error) {
-            console.error('Erro ao carregar linhas com sublinhas:', error)
-        }
+        // Backend antigo removido: manter vazio
+        setLinhasComSublinhas([])
     }
 
-    const carregarPecasPorModelo = async (modeloNome?: string) => {
-        try {
-            const modeloParaBuscar = modeloNome ?? modelo
-
-            if (!modeloParaBuscar) {
-                setPecasDisponiveis([])
-                return
-            }
-
-            // Encontrar o modelo selecionado (buscar em todosModelos para garantir que encontre mesmo se não estiver filtrado)
-            const modeloSelecionado = todosModelos.find(m => m.nome === modeloParaBuscar) || modelos.find(m => m.nome === modeloParaBuscar)
-            if (!modeloSelecionado) {
-                setPecasDisponiveis([])
-                return
-            }
-
-            // Buscar peças do modelo
-            const pecasData = await pecasAPI.buscarPorModelo(modeloSelecionado.id)
-            setPecasDisponiveis(pecasData.map((p: any) => ({
-                id: p.id,
-                codigo: p.codigo,
-                nome: p.nome,
-                modelo_id: p.modelo_id
-            })))
-        } catch (error) {
-            console.error('Erro ao carregar peças do modelo:', error)
-            setPecasDisponiveis([])
-        }
+    const carregarPecasPorModelo = async (_modeloNome?: string) => {
+        // Backend antigo removido: manter vazio
+        setPecasDisponiveis([])
     }
 
     const carregarOperacoes = async () => {
-        try {
-            setCarregando(true)
-            setErro(null)
-            const dados = await operacoesAPI.listarTodos()
-            const operacoesOrdenadas = dados
-                .map((op: any) => ({
-                    id: op.id,
-                    operacao: op.operacao,
-                    produto: op.produto,
-                    modelo: op.modelo,
-                    linha: op.linha,
-                    posto: op.posto,
-                    toten: op.toten || op.totens?.[0] || '',
-                    pecas: op.pecas || [],
-                    serial: op.serial || '',
-                    nome: op.nome || ''
-                }))
-                .sort((a: any, b: any) => Number(b.id) - Number(a.id))
-
-            setOperacoes(operacoesOrdenadas)
-        } catch (error) {
-            console.error('Erro ao carregar operações:', error)
-            setErro(error instanceof Error ? error.message : 'Erro ao carregar operações')
-        } finally {
-            setCarregando(false)
-        }
+        setCarregando(true)
+        setErro(null)
+        setOperacoes([])
+        setCarregando(false)
     }
 
 
@@ -393,23 +272,15 @@ const Operacoes = () => {
                 pecas: pecas.length > 0 ? pecas : undefined
             }
 
-            if (operacaoEditandoId) {
-                // Atualizar operação existente
-                await operacoesAPI.atualizar(parseInt(operacaoEditandoId), dadosOperacao)
-                setMensagemSucesso('Operação atualizada com sucesso!')
-                setModalSucessoAberto(true)
-            } else {
-                // Criar nova operação
-                await operacoesAPI.criar(dadosOperacao)
-                setMensagemSucesso('Operação cadastrada com sucesso!')
-                setModalSucessoAberto(true)
-            }
+            // Backend antigo removido: salvar/atualizar desabilitado
+            setTituloErro('Indisponível')
+            setMensagemErro('Salvar/atualizar desabilitado enquanto o novo backend é construído.')
+            setModalErroAberto(true)
 
             limparFormulario()
             setAbaAtiva('listar')
             await carregarOperacoes()
         } catch (error) {
-            console.error('Erro ao salvar operação:', error)
             const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar operação'
             setErro(errorMessage)
             setTituloErro('Erro!')
@@ -426,24 +297,12 @@ const Operacoes = () => {
     }
 
     const handleRemoverOperacao = async () => {
-        if (!operacaoParaRemover) return
-
-        try {
-            setErro(null)
-            await operacoesAPI.deletar(parseInt(operacaoParaRemover.id))
-            setMensagemSucesso('Operação removida com sucesso!')
-            setModalSucessoAberto(true)
-            await carregarOperacoes()
-        } catch (error) {
-            console.error('Erro ao remover operação:', error)
-            const msg = error instanceof Error ? error.message : 'Erro ao remover operação'
-            setErro(msg)
-            setTituloErro('Erro!')
-            setMensagemErro(`Erro: ${msg}`)
-            setModalErroAberto(true)
-        } finally {
-            setOperacaoParaRemover(null)
-        }
+        // Backend antigo removido: remoção desabilitada
+        setModalConfirmacaoAberto(false)
+        setOperacaoParaRemover(null)
+        setTituloErro('Indisponível')
+        setMensagemErro('Remoção desabilitada enquanto o novo backend é construído.')
+        setModalErroAberto(true)
     }
 
     const handleEditarOperacao = async (op: Operacao) => {

@@ -1,146 +1,43 @@
-from typing import Dict, Any, List
-from Backend.models import Peca
-from Backend.models.database import DatabaseConnection
-
-# LISTAR
-def listar_todas():
-    try:
-        pecas = Peca.listar_todas()
-        return [peca.to_dict() for peca in pecas]
-    except Exception as e:
-        print(f'Erro ao listar peças: {e}')
-        return []
+from typing import Optional
+from ..DAO.pecas_dao import PecaDAO
+from ..Model.Produtos import Peca
 
 
-def listar_todas_com_relacoes():
-    """Lista todas as peças com informações de modelo e produto em uma única query otimizada"""
-    try:
-        query = """
-            SELECT DISTINCT ON (p.peca_id)
-                p.peca_id,
-                p.codigo,
-                p.nome,
-                COALESCE(m.modelo_id, 0) as modelo_id,
-                COALESCE(m.nome, '') as modelo_nome,
-                COALESCE(
-                    (SELECT pr.produto_id 
-                     FROM produto_modelo pm2 
-                     INNER JOIN produtos pr ON pm2.produto_id = pr.produto_id 
-                     WHERE pm2.modelo_id = m.modelo_id 
-                     LIMIT 1), 
-                    0
-                ) as produto_id,
-                COALESCE(
-                    (SELECT pr.nome 
-                     FROM produto_modelo pm2 
-                     INNER JOIN produtos pr ON pm2.produto_id = pr.produto_id 
-                     WHERE pm2.modelo_id = m.modelo_id 
-                     LIMIT 1), 
-                    ''
-                ) as produto_nome
-            FROM pecas p
-            LEFT JOIN modelo_pecas mp ON p.peca_id = mp.peca_id
-            LEFT JOIN modelos m ON mp.modelo_id = m.modelo_id
-            ORDER BY p.peca_id, p.codigo
-        """
-        resultados = DatabaseConnection.execute_query(query, fetch_all=True)
-        
-        pecas_enriquecidas = []
-        if resultados:
-            for resultado in resultados:
-                peca_dict = {
-                    'id': resultado[0],
-                    'codigo': resultado[1],
-                    'nome': resultado[2],
-                    'modelo_id': resultado[3] if resultado[3] != 0 else None,
-                    'modelo_nome': resultado[4] if resultado[4] else None,
-                    'produto_id': resultado[5] if resultado[5] != 0 else None,
-                    'produto_nome': resultado[6] if resultado[6] else None
-                }
-                pecas_enriquecidas.append(peca_dict)
-        
-        return pecas_enriquecidas
-    except Exception as e:
-        print(f'Erro ao listar peças com relações: {e}')
-        return []
+class PecaService:
+	def __init__(self, dao: PecaDAO):
+	 self.dao = dao
 
-# BUSCAR POR ID
-def buscar_por_id(peca_id):
-    try:
-        peca = Peca.buscar_por_id(peca_id)
-        if peca:
-            return peca.to_dict()
-        return None
-    except Exception as e:
-        print(f'Erro ao buscar peça: {e}')
-        return None
+	def listar(self) -> list[Peca]:
+		return self.dao.listar_todos()
 
-# BUSCAR MODELO ID
-def buscar_por_modelo_id(modelo_id):
-    try:
-        pecas = Peca.buscar_por_modelo_id(modelo_id)
-        return [peca.to_dict() for peca in pecas]
-    except Exception as e:
-        print(f'Erro ao buscar peças do modelo: {e}')
-        return []
+	def buscar(self, peca_id: int) -> Optional[Peca]:
+		return self.dao.buscar_por_id(peca_id)
 
-# CRIAR
-def criar_peca(modelo_id, codigo, nome):
-    try:
-        pecas_existentes = Peca.buscar_por_modelo_id(modelo_id)
-        for peca in pecas_existentes:
-            if peca.codigo.lower() == codigo.lower() and peca.nome.lower() == nome.lower():
-                return {'erro': 'Peça e código existente já cadastrado'}
-        
-        nova_peca = Peca(
-            modelo_id=modelo_id,
-            codigo=codigo,
-            nome=nome
-        )
-        nova_peca.salvar()
-        
-        return {
-            'sucesso': True,
-            'peca_id': nova_peca.id,
-            'mensagem': 'Peça criada com sucesso'
-        }
-    except Exception as e:
-        print(f'Erro ao criar peça: {e}')
-        return {'erro': 'Não foi possível criar a peça'}
+	def criar(self, nome: str, codigo: str) -> Peca:
+		nome = nome.strip()
+		codigo = codigo.strip()
+		if not nome:
+			raise ValueError("Nome da peça não pode ser vazio.")
+		if not codigo:
+			raise ValueError("Código da peça não pode ser vazio.")
+		return self.dao.criar(nome, codigo)
 
-# ATUALIZAR
-def atualizar_peca(peca_id, modelo_id, codigo, nome):
-    try:
-        peca = Peca.buscar_por_id(peca_id)
-        if not peca:
-            return {'erro': f'Peça com ID {peca_id} não encontrada'}
-        
-        peca.modelo_id = modelo_id
-        peca.codigo = codigo
-        peca.nome = nome
-        peca.salvar()
-        
-        return {
-            'sucesso': True,
-            'mensagem': 'Peça atualizada com sucesso'
-        }
-    except Exception as e:
-        print(f'Erro ao atualizar peça: {e}')
-        return {'erro': 'Não foi possível atualizar a peça'}
+	def atualizar(self, peca_id: int, novo_nome: Optional[str] = None, novo_codigo: Optional[str] = None) -> Peca:
+		if novo_nome is not None:
+			novo_nome = novo_nome.strip()
+			if not novo_nome:
+				raise ValueError("Nome da peça não pode ser vazio.")
+		if novo_codigo is not None:
+			novo_codigo = novo_codigo.strip()
+			if not novo_codigo:
+				raise ValueError("Código da peça não pode ser vazio.")
+		peca = self.dao.atualizar(peca_id, novo_nome, novo_codigo)
+		if peca is None:
+			raise ValueError(f"Peça {peca_id} não encontrada.")
+		return peca
 
-# DELETAR
-def deletar_peca(peca_id):
-    try:
-        peca = Peca.buscar_por_id(peca_id)
-        if not peca:
-            return {'erro': f'Peça com ID {peca_id} não encontrada'}
-        
-        peca.deletar()
-        
-        return {
-            'sucesso': True,
-            'mensagem': 'Peça deletada com sucesso'
-        }
-    except Exception as e:
-        print(f'Erro ao deletar peça: {e}')
-        return {'erro': 'Não foi possível deletar a peça'}
+	def deletar(self, peca_id: int) -> None:
+		ok = self.dao.deletar(peca_id)
+		if not ok:
+			raise ValueError(f"Peça {peca_id} não encontrada.")
+
