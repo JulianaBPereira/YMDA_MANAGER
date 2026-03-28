@@ -8,6 +8,14 @@ class FuncionariosDAO:
     def __init__(self, db: Session):
         self.db = db
 
+    def buscar_por_tag(self, tag: str):
+        """Busca um funcionário pela tag fixa ou pela tag temporária."""
+        return (
+            self.db.query(Funcionario)
+            .filter((Funcionario.tag == tag) | (Funcionario.tag_temporaria == tag))
+            .first()
+        )
+
     def criar_funcionario(self, tag: str, matricula: str, nome: str,
                           tag_temporaria: str, ativo: bool, turno_ids: list[int]):
         # Validação de duplicidade: Tag e Matrícula devem ser únicas
