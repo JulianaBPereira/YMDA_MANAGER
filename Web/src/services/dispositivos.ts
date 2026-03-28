@@ -4,7 +4,7 @@ export interface Dispositivo {
     id: number
     nome: string
     serial_number: string
-    criado_em?: string
+    data_criacao?: string
 }
 
 export interface CriarDispositivoData {
