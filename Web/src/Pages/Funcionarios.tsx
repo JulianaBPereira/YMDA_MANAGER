@@ -121,14 +121,21 @@ const Funcionarios = () => {
         if (!tag.trim()) return mostrarErro('Atenção!', 'A Tag RFID é obrigatória.')
         if (turnosSelecionados.length === 0) return mostrarErro('Atenção!', 'Selecione pelo menos um turno.')
 
+        // Validação simples no cliente para evitar duplicidade imediata
+        const tagNormalizada = tag.trim()
+        const jaExiste = funcionarios.some(f => f.tag === tagNormalizada || f.matricula === matricula)
+        if (jaExiste) {
+            return mostrarErro('Atenção!', 'Já existe um funcionário com a mesma Tag ou Matrícula.')
+        }
+
         try {
-            const criado = await criarFuncionario({ tag: tag.trim(), matricula, nome, ativo, turno_ids: turnosSelecionados })
+            const criado = await criarFuncionario({ tag: tagNormalizada, matricula, nome, ativo, turno_ids: turnosSelecionados })
 
             // Workaround: alguns backends podem ignorar turno_ids no POST.
             // Se voltar sem turnos, tentamos atualizar em seguida para garantir a associação.
             if (Array.isArray(criado?.turnos) ? criado.turnos.length === 0 : true) {
                 await atualizarFuncionario(criado.id, {
-                    tag: tag.trim(),
+                    tag: tagNormalizada,
                     matricula,
                     nome,
                     ativo,
@@ -406,26 +413,20 @@ const Funcionarios = () => {
                 mensagem="Tem certeza que deseja excluir este funcionário?"
                 textoConfirmar="Excluir"
                 textoCancelar="Cancelar"
-                corHeader="laranja"
+                corHeader="vermelho"
             />
 
             <ModalConfirmacao
                 isOpen={modalStatusAberto}
                 onClose={fecharModal}
                 onConfirm={handleConfirmarMudancaStatus}
-                titulo="Alterar Status"
-                mensagem="Deseja alterar o status deste funcionário?"
+                titulo={funcionarioSelecionado?.ativo ? 'Desativar' : 'Ativar'}
+                mensagem={funcionarioSelecionado?.ativo ? 'Deseja desativar esse funcionário?' : 'Deseja ativar esse funcionário?'}
                 textoConfirmar="Confirmar"
                 textoCancelar="Cancelar"
-                corHeader={funcionarioSelecionado?.ativo ? 'laranja' : 'azul'}
-                item={funcionarioSelecionado ? {
-                    matricula: funcionarioSelecionado.matricula,
-                    nome: funcionarioSelecionado.nome,
-                    status: funcionarioSelecionado.ativo ? 'Ativo' : 'Inativo',
-                    novoStatus: funcionarioSelecionado.ativo ? 'Inativo' : 'Ativo'
-                } : undefined}
-                camposItem={['matricula', 'nome']}
-                mostrarDetalhes={true}
+                corHeader={funcionarioSelecionado?.ativo ? 'vermelho' : 'verde'}
+                item={undefined}
+                mostrarDetalhes={false}
             />
 
             <ModalSucesso

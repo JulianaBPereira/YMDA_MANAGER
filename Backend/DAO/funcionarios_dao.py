@@ -10,6 +10,15 @@ class FuncionariosDAO:
 
     def criar_funcionario(self, tag: str, matricula: str, nome: str,
                           tag_temporaria: str, ativo: bool, turno_ids: list[int]):
+        # Validação de duplicidade: Tag e Matrícula devem ser únicas
+        existente = (
+            self.db.query(Funcionario)
+            .filter((Funcionario.tag == tag) | (Funcionario.matricula == matricula))
+            .first()
+        )
+        if existente:
+            raise ValueError("Já existe um funcionário com a mesma Tag ou Matrícula.")
+
         novo = Funcionario(
             tag=tag,
             matricula=matricula,
@@ -30,6 +39,18 @@ class FuncionariosDAO:
         funcionario = self.db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
         if not funcionario:
             return None
+
+        # Validação de duplicidade ao editar (ignora o próprio registro)
+        conflito = (
+            self.db.query(Funcionario)
+            .filter(
+                (Funcionario.id != funcionario_id)
+                & ((Funcionario.tag == tag) | (Funcionario.matricula == matricula))
+            )
+            .first()
+        )
+        if conflito:
+            raise ValueError("Já existe outro funcionário com a mesma Tag ou Matrícula.")
 
         funcionario.tag = tag
         funcionario.matricula = matricula

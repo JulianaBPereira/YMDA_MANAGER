@@ -1,11 +1,16 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from ..Database.database import Base
 
 
 class Funcionario(Base):
     __tablename__ = 'funcionarios'
+    __table_args__ = (
+        # Garante unicidade de Tag RFID e Matrícula no banco
+        UniqueConstraint('tag', name='uq_funcionarios_tag'),
+        UniqueConstraint('matricula', name='uq_funcionarios_matricula'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tag = Column(String, nullable=False)
