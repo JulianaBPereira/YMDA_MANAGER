@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import ModalConfirmacao from '../Compartilhados/ModalConfirmacao'
 import ModalSucesso from '../Modais/ModalSucesso'
 import ModalErro from '../Modais/ModalErro'
 import {
@@ -29,7 +28,6 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
     const [removendoTag, setRemovendoTag] = useState(false)
     const [tagTemporariaAtual, setTagTemporariaAtual] = useState<string | null>(null)
     const [expiracaoTagAtual, setExpiracaoTagAtual] = useState<string | null>(null)
-    const [modalRemoverTagAberto, setModalRemoverTagAberto] = useState(false)
     const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
     const [modalErroAberto, setModalErroAberto] = useState(false)
     const [mensagemSucesso, setMensagemSucesso] = useState('')
@@ -75,8 +73,6 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
             setTagTemporariaAtual(atualizado.tag_temporaria)
             setExpiracaoTagAtual(atualizado.expiracao_tag_temporaria)
             setTagTemporaria('')
-            setMensagemSucesso('Tag temporária cadastrada com sucesso!')
-            setModalSucessoAberto(true)
         } catch (error: any) {
             setTituloErro('Erro!')
             setMensagemErro(`Erro ao cadastrar tag temporária: ${error?.message || 'Erro desconhecido'}`)
@@ -93,9 +89,6 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
             const atualizado = await removerTagTemporaria(funcionarioEditando.id)
             setTagTemporariaAtual(atualizado.tag_temporaria)
             setExpiracaoTagAtual(atualizado.expiracao_tag_temporaria)
-            setModalRemoverTagAberto(false)
-            setMensagemSucesso('Tag temporária removida com sucesso!')
-            setModalSucessoAberto(true)
         } catch (error: any) {
             setTituloErro('Erro!')
             setMensagemErro(`Erro ao remover tag temporária: ${error?.message || 'Erro desconhecido'}`)
@@ -216,7 +209,7 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => setModalRemoverTagAberto(true)}
+                                                onClick={handleRemoverTagTemporaria}
                                                 disabled={removendoTag}
                                                 className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                                                 title="Remover tag temporária"
@@ -360,17 +353,6 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
                     </button>
                 </div>
             </div>
-
-            <ModalConfirmacao
-                isOpen={modalRemoverTagAberto}
-                onClose={() => setModalRemoverTagAberto(false)}
-                onConfirm={handleRemoverTagTemporaria}
-                titulo="Remover Tag Temporária"
-                mensagem="Tem certeza que deseja remover a tag temporária deste funcionário?"
-                textoConfirmar="Remover"
-                textoCancelar="Cancelar"
-                corHeader="laranja"
-            />
 
             <ModalSucesso
                 isOpen={modalSucessoAberto}

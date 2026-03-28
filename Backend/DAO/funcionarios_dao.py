@@ -63,7 +63,6 @@ class FuncionariosDAO:
         funcionario.tag = tag
         funcionario.matricula = matricula
         funcionario.nome = nome
-        funcionario.tag_temporaria = tag_temporaria
         funcionario.ativo = ativo
 
         turnos = self.db.query(Turnos).filter(Turnos.id.in_(turno_ids)).all()
