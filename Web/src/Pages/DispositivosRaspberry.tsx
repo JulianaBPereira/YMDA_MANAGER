@@ -239,9 +239,7 @@ const DispositivosRaspberry = () => {
                                     </form>
                                 ) : (
                                     <>
-                                        <p className="text-gray-500 text-sm mb-4">
-                                            Dispositivos Raspberry cadastrados. Use Editar para alterar o nome e Excluir para remover.
-                                        </p>
+                                     
                                         {carregando ? (
                                             <div className="flex justify-center items-center py-12">
                                                 <p className="text-gray-500">Carregando...</p>
