@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import TopBar from '../Components/topBar/TopBar'
 import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
+import ModalFormulario from '../Components/Compartilhados/ModalFormulario'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { listarLinhas, atualizarLinha, deletarLinha, criarLinhaComSublinha } from '../services/linhas'
-
+import {
+    listarLinhas,
+    listarSublinhas,
+    atualizarLinha,
+    atualizarSublinha,
+    deletarLinha,
+    criarLinhaComSublinha,
+} from '../services/linhas'
 
 interface Sublinha {
     id: number
@@ -23,39 +30,52 @@ interface Linha {
 
 const Linhas = () => {
     const [abaAtiva, setAbaAtiva] = useState<'cadastrar' | 'listar'>('cadastrar')
-    
+
     // Estados para cadastro composto
     const [nomeLinha, setNomeLinha] = useState('')
     const [nomeSublinha, setNomeSublinha] = useState('')
-    
+
     // Estados para listagem
     const [linhas, setLinhas] = useState<Linha[]>([])
-    const [linhaEditando, setLinhaEditando] = useState<number | null>(null)
-    const [nomeLinhaEditando, setNomeLinhaEditando] = useState('')
+    const [carregandoListagem, setCarregandoListagem] = useState(false)
+    const [linhaEditando, setLinhaEditando] = useState<Linha | null>(null)
+    const [modalEdicaoLinhaAberto, setModalEdicaoLinhaAberto] = useState(false)
+    const [filtroLinha, setFiltroLinha] = useState('')
     const [paginaAtual, setPaginaAtual] = useState(1)
-    const [itensPorPagina] = useState(10)
+    const itensPorPagina = 10
+
     const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
     const [modalErroAberto, setModalErroAberto] = useState(false)
     const [mensagemSucesso, setMensagemSucesso] = useState('')
     const [mensagemErro, setMensagemErro] = useState('')
     const [tituloErro, setTituloErro] = useState('Erro!')
+
     const [modalConfirmacaoLinhaAberto, setModalConfirmacaoLinhaAberto] = useState(false)
     const [linhaIdParaExcluir, setLinhaIdParaExcluir] = useState<number | null>(null)
 
     useEffect(() => {
-        if (abaAtiva === 'listar') carregarLinhas()
+        if (abaAtiva === 'listar') {
+            carregarLinhas()
+        }
     }, [abaAtiva])
 
     const carregarLinhas = async () => {
+        setCarregandoListagem(true)
         try {
             const resp = await listarLinhas()
             const normalizadas: Linha[] = Array.isArray(resp)
                 ? resp.map((l: any) => ({
-                    id: l.id,
-                    nome: l.nome,
-                    data_criacao: l.data_criacao,
-                    sublinhas: Array.isArray(l.sublinhas) ? l.sublinhas : []
-                }))
+                      id: l.id,
+                      nome: l.nome,
+                      data_criacao: l.data_criacao,
+                      sublinhas: Array.isArray(l.sublinhas)
+                          ? l.sublinhas.map((s: any) => ({
+                                id: s.id,
+                                linha_id: s.linha_id,
+                                nome: s.nome,
+                            }))
+                          : [],
+                  }))
                 : []
             setLinhas(normalizadas)
         } catch (e: any) {
@@ -63,26 +83,67 @@ const Linhas = () => {
             setMensagemErro(e?.message || 'Erro ao carregar linhas')
             setModalErroAberto(true)
             setLinhas([])
+        } finally {
+            setCarregandoListagem(false)
         }
     }
 
+    const nomesIguaisIgnorandoCase = (a: string, b: string) => {
+        return a.trim().toLocaleLowerCase('pt-BR') === b.trim().toLocaleLowerCase('pt-BR')
+    }
+
+    const normalizarNome = (valor: string) => valor.trim().toLocaleLowerCase('pt-BR')
+
     const handleCadastrarComposto = async (e: React.FormEvent) => {
         e.preventDefault()
-        
-        if (!nomeLinha.trim() || !nomeSublinha.trim()) {
+
+        const nomeLinhaLimpo = nomeLinha.trim()
+        const nomeSublinhaLimpo = nomeSublinha.trim()
+
+        if (!nomeLinhaLimpo || !nomeSublinhaLimpo) {
             setTituloErro('Erro!')
             setMensagemErro('Informe o nome da linha e da sublinha')
             setModalErroAberto(true)
             return
         }
 
+        if (nomesIguaisIgnorandoCase(nomeLinhaLimpo, nomeSublinhaLimpo)) {
+            setTituloErro('Nomes iguais nao permitidos')
+            setMensagemErro('O nome da linha e da sublinha nao podem ser iguais.')
+            setModalErroAberto(true)
+            return
+        }
+
         try {
-            await criarLinhaComSublinha({ nome_linha: nomeLinha.trim(), nome_sublinha: nomeSublinha.trim() })
+            const linhasExistentes = await listarLinhas()
+            const jaExisteCombinacao = Array.isArray(linhasExistentes)
+                ? linhasExistentes.some((linha: any) =>
+                      normalizarNome(linha?.nome || '') === normalizarNome(nomeLinhaLimpo) &&
+                      Array.isArray(linha?.sublinhas) &&
+                      linha.sublinhas.some(
+                          (s: any) => normalizarNome(s?.nome || '') === normalizarNome(nomeSublinhaLimpo)
+                      )
+                  )
+                : false
+
+            if (jaExisteCombinacao) {
+                setTituloErro('Combinacao duplicada')
+                setMensagemErro('Ja existe uma linha e sublinha cadastradas com esses nomes.')
+                setModalErroAberto(true)
+                return
+            }
+
+            await criarLinhaComSublinha({
+                nome_linha: nomeLinhaLimpo,
+                nome_sublinha: nomeSublinhaLimpo,
+            })
             setNomeLinha('')
             setNomeSublinha('')
             setMensagemSucesso('Linha e sublinha criadas com sucesso!')
             setModalSucessoAberto(true)
-            if (abaAtiva === 'listar') await carregarLinhas()
+            if (abaAtiva === 'listar') {
+                await carregarLinhas()
+            }
         } catch (e: any) {
             setTituloErro('Erro!')
             setMensagemErro(e?.message || 'Erro ao criar linha e sublinha')
@@ -103,7 +164,7 @@ const Linhas = () => {
             setModalConfirmacaoLinhaAberto(false)
             setLinhaIdParaExcluir(null)
             await carregarLinhas()
-            setMensagemSucesso('Linha excluída com sucesso!')
+            setMensagemSucesso('Linha excluida com sucesso!')
             setModalSucessoAberto(true)
         } catch (e: any) {
             setModalConfirmacaoLinhaAberto(false)
@@ -114,25 +175,77 @@ const Linhas = () => {
         }
     }
 
-
-
     const handleIniciarEdicaoLinha = (linha: Linha) => {
-        setLinhaEditando(linha.id)
-        setNomeLinhaEditando(linha.nome)
+        setLinhaEditando(linha)
+        setModalEdicaoLinhaAberto(true)
     }
 
-    const handleSalvarEdicaoLinha = async (linhaId: number) => {
-        if (!nomeLinhaEditando.trim()) {
+    const handleSalvarEdicaoLinha = async (dados: Record<string, any>) => {
+        if (!linhaEditando) return
+
+        const nomeLinha = dados.nome_linha?.trim() || linhaEditando.nome
+        const nomeSublinha =
+            dados.nome_sublinha?.trim() || linhaEditando.sublinhas?.[0]?.nome || ''
+
+        if (!nomeLinha) {
             setTituloErro('Erro!')
-            setMensagemErro('Informe o nome da linha')
+            setMensagemErro('O nome da linha nao pode estar vazio')
+            setModalErroAberto(true)
+            return
+        }
+
+        if (nomesIguaisIgnorandoCase(nomeLinha, nomeSublinha)) {
+            setTituloErro('Nomes iguais nao permitidos')
+            setMensagemErro('O nome da linha e da sublinha nao podem ser iguais.')
+            setModalErroAberto(true)
+            return
+        }
+
+        const existeOutraLinhaComMesmoNome = linhas.some(
+            (linha) =>
+                linha.id !== linhaEditando.id &&
+                normalizarNome(linha.nome) === normalizarNome(nomeLinha)
+        )
+
+        if (existeOutraLinhaComMesmoNome) {
+            setTituloErro('Nome de linha ja existente')
+            setMensagemErro('Ja existe uma linha cadastrada com esse nome.')
+            setModalErroAberto(true)
+            return
+        }
+
+        const existeOutraSublinhaComMesmoNome = linhas.some(
+            (linha) =>
+                linha.id !== linhaEditando.id &&
+                normalizarNome(linha.sublinhas?.[0]?.nome || '') === normalizarNome(nomeSublinha)
+        )
+
+        if (nomeSublinha && existeOutraSublinhaComMesmoNome) {
+            setTituloErro('Nome de sublinha ja existente')
+            setMensagemErro('Ja existe uma sublinha cadastrada com esse nome.')
             setModalErroAberto(true)
             return
         }
 
         try {
-            await atualizarLinha(linhaId, { nome: nomeLinhaEditando.trim() })
+            await atualizarLinha(linhaEditando.id, { nome: nomeLinha })
+
+            // Atualiza a sublinha associada; se não vier no estado, busca por linha_id.
+            let sublinhaAtual: Sublinha | undefined = linhaEditando.sublinhas?.[0]
+            if (!sublinhaAtual?.id) {
+                const sublinhas = await listarSublinhas()
+                sublinhaAtual = sublinhas.find((s) => s.linha_id === linhaEditando.id)
+            }
+
+            if (sublinhaAtual?.id && nomeSublinha) {
+                await atualizarSublinha(Number(sublinhaAtual.id), {
+                    nome: nomeSublinha,
+                    linha_id: linhaEditando.id,
+                })
+            }
+
+            setModalEdicaoLinhaAberto(false)
             setLinhaEditando(null)
-            setNomeLinhaEditando('')
             await carregarLinhas()
             setMensagemSucesso('Linha atualizada com sucesso!')
             setModalSucessoAberto(true)
@@ -143,21 +256,41 @@ const Linhas = () => {
         }
     }
 
-    const handleCancelarEdicaoLinha = () => {
-        setLinhaEditando(null)
-        setNomeLinhaEditando('')
+    const formatarData = (data: string | undefined) => {
+        if (!data) return '-'
+        try {
+            return new Date(data).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+            })
+        } catch {
+            return data
+        }
     }
 
-    const indiceInicio = (paginaAtual - 1) * itensPorPagina
-    const indiceFim = indiceInicio + itensPorPagina
-    const linhasPaginaAtual = linhas.slice(indiceInicio, indiceFim)
+    const linhasFiltradas = useMemo(() => {
+        return linhas.filter((linha) =>
+            !filtroLinha || linha.nome.toLowerCase().includes(filtroLinha.toLowerCase())
+        )
+    }, [linhas, filtroLinha])
 
     useEffect(() => {
-        const totalPaginas = Math.ceil(linhas.length / itensPorPagina)
+        setPaginaAtual(1)
+    }, [filtroLinha])
+
+    const indiceInicio = (paginaAtual - 1) * itensPorPagina
+    const linhasPaginaAtual = linhasFiltradas.slice(indiceInicio, indiceInicio + itensPorPagina)
+    const temFiltros = Boolean(filtroLinha)
+    const inputClasses =
+        'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+
+    useEffect(() => {
+        const totalPaginas = Math.ceil(linhasFiltradas.length / itensPorPagina)
         if (paginaAtual > totalPaginas && totalPaginas > 0) {
             setPaginaAtual(totalPaginas)
         }
-    }, [linhas.length, itensPorPagina, paginaAtual])
+    }, [linhasFiltradas.length, paginaAtual])
 
     return (
         <div className="flex min-h-screen bg-gray-50">
@@ -181,7 +314,10 @@ const Linhas = () => {
                                     Cadastrar
                                 </button>
                                 <button
-                                    onClick={() => setAbaAtiva('listar')}
+                                    onClick={() => {
+                                        setCarregandoListagem(true)
+                                        setAbaAtiva('listar')
+                                    }}
                                     className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
                                         abaAtiva === 'listar'
                                             ? 'text-white border-b-2'
@@ -194,7 +330,7 @@ const Linhas = () => {
                                 </button>
                             </div>
 
-                            <div className="p-6">
+                            <div className={abaAtiva === 'cadastrar' ? 'p-6' : ''}>
                                 {abaAtiva === 'cadastrar' && (
                                     <form onSubmit={handleCadastrarComposto}>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -226,12 +362,16 @@ const Linhas = () => {
                                             </div>
                                         </div>
                                         <div className="flex gap-3 mt-4">
-                                            <button 
+                                            <button
                                                 type="submit"
                                                 className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                                                 style={{ backgroundColor: 'var(--bg-azul)' }}
-                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.opacity = '0.9'
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.opacity = '1'
+                                                }}
                                             >
                                                 <i className="bi bi-plus-circle-fill"></i>
                                                 <span>Cadastrar</span>
@@ -239,126 +379,118 @@ const Linhas = () => {
                                         </div>
                                     </form>
                                 )}
-
-                                {abaAtiva === 'listar' && (
-                                    <div>
-                                        <div className="px-4 py-2 bg-blue-50 rounded-md mb-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className="w-8" />
-                                                <div className="grid grid-cols-3 items-center w-full gap-4">
-                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide col-span-1">
-                                                        Linha
-                                                    </span>
-                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
-                                                        Sublinha
-                                                    </span>
-                                                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-8 col-span-1">
-                                                        Data Criação
-                                                    </span>
-                                                </div>
-                                                <div className="w-24" />
-                                            </div>
-                                        </div>
-
-                                        {linhas.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center py-12">
-                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
-                                                <p className="text-gray-500 text-lg font-medium">
-                                                    Nenhuma linha cadastrada
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {linhasPaginaAtual.map((linha) => {
-                                                    const estaEditandoLinha = linhaEditando === linha.id
-                                                    return (
-                                                        <div key={linha.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 hover:bg-gray-50 transition-colors">
-                                                            <div className="flex items-center gap-3 w-full">
-                                                                <span className="w-8 text-gray-400">
-                                                                    <i className="bi bi-diagram-3"></i>
-                                                                </span>
-                                                                <div className="grid grid-cols-3 items-center w-full gap-4">
-                                                                    <div className="col-span-1">
-                                                                        {estaEditandoLinha ? (
-                                                                            <input
-                                                                                type="text"
-                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                                                value={nomeLinhaEditando}
-                                                                                onChange={(e) => setNomeLinhaEditando(e.target.value)}
-                                                                            />
-                                                                        ) : (
-                                                                            <span className="text-sm font-medium text-gray-900">{linha.nome}</span>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="col-span-1 text-center">
-                                                                        <span className="text-sm text-gray-700">
-                                                                            {Array.isArray(linha.sublinhas) && linha.sublinhas.length > 0 ? linha.sublinhas[0].nome : '-'}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="col-span-1 text-right pr-8">
-                                                                        <span className="text-sm text-gray-700">
-                                                                            {linha.data_criacao ? new Date(linha.data_criacao).toLocaleDateString('pt-BR') : '-'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 w-24 justify-end">
-                                                                {estaEditandoLinha ? (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => handleSalvarEdicaoLinha(linha.id)}
-                                                                            className="p-2 rounded transition-colors hover:opacity-80"
-                                                                            style={{ color: 'var(--bg-azul)' }}
-                                                                            title="Salvar"
-                                                                        >
-                                                                            <i className="bi bi-check-lg"></i>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={handleCancelarEdicaoLinha}
-                                                                            className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 p-2 rounded transition-colors"
-                                                                            title="Cancelar"
-                                                                        >
-                                                                            <i className="bi bi-x-circle"></i>
-                                                                        </button>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => handleIniciarEdicaoLinha(linha)}
-                                                                            className="p-2 rounded transition-colors hover:opacity-80"
-                                                                            style={{ color: 'var(--bg-azul)' }}
-                                                                            title="Editar linha"
-                                                                        >
-                                                                            <i className="bi bi-pencil"></i>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleExcluirLinha(linha.id)}
-                                                                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
-                                                                            title="Excluir linha"
-                                                                        >
-                                                                            <i className="bi bi-trash"></i>
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-
-                                                {linhas.length > itensPorPagina && (
-                                                    <Paginacao
-                                                        totalItens={linhas.length}
-                                                        itensPorPagina={itensPorPagina}
-                                                        paginaAtual={paginaAtual}
-                                                        onPageChange={setPaginaAtual}
-                                                    />
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                         </div>
+
+                        {abaAtiva === 'listar' && (
+                            <div className="flex flex-col gap-6 mt-6">
+                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                    <div className="p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                                                <i className="bi bi-funnel"></i>
+                                                Filtros de Busca
+                                            </h4>
+                                            {temFiltros && (
+                                                <button
+                                                    onClick={() => setFiltroLinha('')}
+                                                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                                >
+                                                    <i className="bi bi-x-circle"></i>
+                                                    Limpar Filtros
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="max-w-xs">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Linha
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className={inputClasses}
+                                                placeholder="Buscar por linha..."
+                                                value={filtroLinha}
+                                                onChange={(e) => setFiltroLinha(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Linha</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Sublinha</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data</th>
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Acoes</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {!carregandoListagem && linhasPaginaAtual.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={4} className="px-6 py-12 text-center">
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                                <p className="text-gray-500 text-lg font-medium">
+                                                                    {temFiltros
+                                                                        ? 'Nenhuma linha encontrada com os filtros aplicados'
+                                                                        : 'Nenhuma linha cadastrada'}
+                                                                </p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ) : !carregandoListagem ? (
+                                                    linhasPaginaAtual.map((linha) => (
+                                                        <tr key={linha.id} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm font-medium text-gray-900">{linha.nome}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm text-gray-900">{linha.sublinhas?.[0]?.nome || '-'}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm text-gray-900">{formatarData(linha.data_criacao)}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleIniciarEdicaoLinha(linha)}
+                                                                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                                                                        title="Editar Linha"
+                                                                    >
+                                                                        <i className="bi bi-pencil-square"></i>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleExcluirLinha(linha.id)}
+                                                                        className="text-red-600 hover:text-red-800 transition-colors"
+                                                                        title="Deletar Linha"
+                                                                    >
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : null
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {linhasFiltradas.length > itensPorPagina && (
+                                    <Paginacao
+                                        totalItens={linhasFiltradas.length}
+                                        itensPorPagina={itensPorPagina}
+                                        paginaAtual={paginaAtual}
+                                        onPageChange={setPaginaAtual}
+                                    />
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -377,6 +509,44 @@ const Linhas = () => {
                 titulo={tituloErro}
             />
 
+            <ModalFormulario
+                isOpen={modalEdicaoLinhaAberto}
+                onClose={() => {
+                    setModalEdicaoLinhaAberto(false)
+                    setLinhaEditando(null)
+                }}
+                onSave={handleSalvarEdicaoLinha}
+                itemEditando={
+                    linhaEditando
+                        ? {
+                              nome_linha: linhaEditando.nome,
+                              nome_sublinha: linhaEditando.sublinhas?.[0]?.nome || '',
+                          }
+                        : null
+                }
+                tituloNovo="Nova Linha"
+                tituloEditar="Editar Linha"
+                campos={[
+                    {
+                        nome: 'nome_linha',
+                        label: 'Nome da Linha',
+                        tipo: 'text',
+                        placeholder: 'Ex: Linha 1',
+                        required: true,
+                    },
+                    {
+                        nome: 'nome_sublinha',
+                        label: 'Nome da Sublinha',
+                        tipo: 'text',
+                        placeholder: 'Ex: Sublinha A',
+                        required: false,
+                    },
+                ]}
+                textoBotao="Salvar"
+                icone="bi bi-diagram-3"
+                secaoTitulo="Informacoes da Linha"
+            />
+
             <ModalConfirmacao
                 isOpen={modalConfirmacaoLinhaAberto}
                 onClose={() => {
@@ -384,13 +554,12 @@ const Linhas = () => {
                     setLinhaIdParaExcluir(null)
                 }}
                 onConfirm={confirmarExcluirLinha}
-                titulo="Confirmar Exclusão"
-                mensagem="Tem certeza que deseja excluir esta linha? Todas as sublinhas associadas também serão excluídas."
+                titulo="Confirmar Exclusao"
+                mensagem="Tem certeza que deseja excluir esta linha?"
                 textoConfirmar="Excluir"
                 textoCancelar="Cancelar"
                 corHeader="vermelho"
             />
-
         </div>
     )
 }
