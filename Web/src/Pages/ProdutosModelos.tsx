@@ -1,12 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import TopBar from '../Components/topBar/TopBar'
 import MenuLateral from '../Components/MenuLateral/MenuLateral'
+import ModalSucesso from '../Components/Modais/ModalSucesso'
+import ModalErro from '../Components/Modais/ModalErro'
 import {
     criarProduto,
     listarProdutos,
     type Produto as ProdutoApi,
 } from '../services/produtos'
-import { criarModelo } from '../services/modelos'
+import {
+    criarModelo,
+    listarModelos,
+    type Modelo as ModeloApi,
+} from '../services/modelos'
 
 type Aba = 'produtos' | 'modelos'
 type AbaProduto = 'novo' | 'existente'
@@ -15,22 +21,32 @@ const ProdutosModelos = () => {
     const [aba, setAba] = useState<Aba>('produtos')
     const [abaProduto, setAbaProduto] = useState<AbaProduto>('novo')
     const [produtos, setProdutos] = useState<ProdutoApi[]>([])
+    const [modelos, setModelos] = useState<ModeloApi[]>([])
     const [carregandoProdutos, setCarregandoProdutos] = useState(true)
     const [erro, setErro] = useState<string | null>(null)
-    const [sucesso, setSucesso] = useState<string | null>(null)
+    const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
+    const [mensagemSucesso, setMensagemSucesso] = useState('')
+    const [modalErroAberto, setModalErroAberto] = useState(false)
+    const [mensagemErro, setMensagemErro] = useState('')
 
     const [nomeProduto, setNomeProduto] = useState('')
     const [nomeModeloProdutoNovo, setNomeModeloProdutoNovo] = useState('')
     const [nomeModelo, setNomeModelo] = useState('')
+    const [nomeModeloProdutoExistente, setNomeModeloProdutoExistente] = useState('')
     const [produtoSelecionadoId, setProdutoSelecionadoId] = useState('')
+    const [produtoSelecionadoProdutoExistente, setProdutoSelecionadoProdutoExistente] = useState('')
     const [salvandoProduto, setSalvandoProduto] = useState(false)
     const [salvandoModelo, setSalvandoModelo] = useState(false)
 
     const carregarProdutos = async () => {
         try {
             setCarregandoProdutos(true)
-            const dados = await listarProdutos()
-            setProdutos(dados)
+            const [dadosProdutos, dadosModelos] = await Promise.all([
+                listarProdutos(),
+                listarModelos(),
+            ])
+            setProdutos(dadosProdutos)
+            setModelos(dadosModelos)
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao carregar produtos')
         } finally {
@@ -48,14 +64,48 @@ const ProdutosModelos = () => {
         }
     }, [nomeProduto])
 
+    const nomeProdutoNormalizado = nomeProduto.trim().toLowerCase()
+    const nomeModeloProdutoNovoNormalizado = nomeModeloProdutoNovo.trim().toLowerCase()
+    const nomeModeloNormalizado = nomeModelo.trim().toLowerCase()
+    const nomeModeloProdutoExistenteNormalizado = nomeModeloProdutoExistente.trim().toLowerCase()
+
+    const produtoDuplicado = produtos.find(
+        (produto) => produto.nome.trim().toLowerCase() === nomeProdutoNormalizado
+    )
+    const modeloDuplicadoProdutoNovo = modelos.find(
+        (modelo) => modelo.nome.trim().toLowerCase() === nomeModeloProdutoNovoNormalizado
+    )
+    const modeloDuplicadoCadastroModelo = modelos.find(
+        (modelo) => modelo.nome.trim().toLowerCase() === nomeModeloNormalizado
+    )
+    const modeloDuplicadoProdutoExistente = modelos.find(
+        (modelo) =>
+            modelo.nome.trim().toLowerCase() === nomeModeloProdutoExistenteNormalizado &&
+            modelo.produto_id === Number(produtoSelecionadoProdutoExistente)
+    )
+
+    // Ordenar produtos e modelos com o último cadastrado primeiro
+    const produtosOrdenados = [...produtos].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+
     const limparMensagens = () => {
         setErro(null)
-        setSucesso(null)
     }
 
     const handleSalvarProduto = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
         if (!nomeProduto.trim() || !nomeModeloProdutoNovo.trim()) {
+            return
+        }
+
+        if (produtoDuplicado || modeloDuplicadoProdutoNovo) {
+            if (produtoDuplicado && modeloDuplicadoProdutoNovo) {
+                setMensagemErro('Já existe um produto e modelo ja cadastrados com esse nome.')
+            } else if (produtoDuplicado) {
+                setMensagemErro('Já existe um produto cadastrado com esse nome.')
+            } else if (modeloDuplicadoProdutoNovo) {
+                setMensagemErro('Já existe um modelo cadastrado com esse nome.')
+            }
+            setModalErroAberto(true)
             return
         }
 
@@ -69,7 +119,8 @@ const ProdutosModelos = () => {
             })
             setNomeProduto('')
             setNomeModeloProdutoNovo('')
-            setSucesso('Produto e modelo cadastrados com sucesso.')
+            setMensagemSucesso('Produto e modelo cadastrados com sucesso.')
+            setModalSucessoAberto(true)
             await carregarProdutos()
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao cadastrar produto e modelo')
@@ -84,6 +135,12 @@ const ProdutosModelos = () => {
             return
         }
 
+        if (modeloDuplicadoCadastroModelo) {
+            setMensagemErro('Já existe um modelo cadastrado com esse nome.')
+            setModalErroAberto(true)
+            return
+        }
+
         try {
             limparMensagens()
             setSalvandoModelo(true)
@@ -93,7 +150,40 @@ const ProdutosModelos = () => {
             })
             setNomeModelo('')
             setProdutoSelecionadoId('')
-            setSucesso('Modelo cadastrado com sucesso.')
+            setMensagemSucesso('Modelo cadastrado com sucesso.')
+            setModalSucessoAberto(true)
+            await carregarProdutos()
+        } catch (err) {
+            setErro(err instanceof Error ? err.message : 'Erro ao cadastrar modelo')
+        } finally {
+            setSalvandoModelo(false)
+        }
+    }
+
+    const handleSalvarModeloProdutoExistente = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        if (!nomeModeloProdutoExistente.trim() || !produtoSelecionadoProdutoExistente) {
+            return
+        }
+
+        if (modeloDuplicadoProdutoExistente) {
+            setMensagemErro('Já existe um modelo cadastrado com esse nome.')
+            setModalErroAberto(true)
+            return
+        }
+
+        try {
+            limparMensagens()
+            setSalvandoModelo(true)
+            await criarModelo({
+                nome: nomeModeloProdutoExistente.trim(),
+                produto_id: Number(produtoSelecionadoProdutoExistente),
+            })
+            setNomeModeloProdutoExistente('')
+            setProdutoSelecionadoProdutoExistente('')
+            setMensagemSucesso('Modelo cadastrado com sucesso.')
+            setModalSucessoAberto(true)
+            await carregarProdutos()
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao cadastrar modelo')
         } finally {
@@ -162,22 +252,6 @@ const ProdutosModelos = () => {
                                 </div>
                             )}
 
-                            {sucesso && (
-                                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                        <i className="bi bi-check-circle"></i>
-                                        <span>{sucesso}</span>
-                                        <button
-                                            onClick={() => setSucesso(null)}
-                                            className="ml-auto text-green-500 hover:text-green-700"
-                                            type="button"
-                                        >
-                                            <i className="bi bi-x"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
                             {aba === 'produtos' ? (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                     <div className="border-b border-gray-200 flex">
@@ -225,7 +299,12 @@ const ProdutosModelos = () => {
                                                         className={inputClasses}
                                                         placeholder="Digite o nome do produto"
                                                         value={nomeProduto}
-                                                        onChange={(e) => setNomeProduto(e.target.value)}
+                                                        onChange={(e) => {
+                                                            if (erro) {
+                                                                setErro(null)
+                                                            }
+                                                            setNomeProduto(e.target.value)
+                                                        }}
                                                         required
                                                     />
                                                 </div>
@@ -247,27 +326,104 @@ const ProdutosModelos = () => {
                                             <div className="flex justify-end">
                                                 <button
                                                     type="submit"
-                                                    className="px-5 py-2.5 text-white rounded-lg transition-opacity disabled:opacity-60"
+                                                    className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
                                                     style={{ backgroundColor: 'var(--bg-azul)' }}
+                                                    onMouseEnter={(e) => {
+                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
+                                                    }}
                                                     disabled={
                                                         salvandoProduto ||
                                                         !nomeProduto.trim() ||
                                                         !nomeModeloProdutoNovo.trim()
                                                     }
                                                 >
-                                                    {salvandoProduto ? 'Salvando...' : 'Cadastrar Produto'}
+                                                    <i className="bi bi-plus-circle-fill"></i>
+                                                    <span>{salvandoProduto ? 'Salvando...' : 'Cadastrar'}</span>
                                                 </button>
                                             </div>
                                         </form>
                                     ) : (
-                                        <div className="p-6">
-                                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-5 text-gray-600">
-                                                A aba Produto Existente fica pronta no proximo ajuste.
+                                        <form onSubmit={handleSalvarModeloProdutoExistente} className="p-6 flex flex-col gap-5">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Produto
+                                                    </label>
+                                                    <select
+                                                        className={inputClasses}
+                                                        value={produtoSelecionadoProdutoExistente}
+                                                        onChange={(e) => {
+                                                            if (erro) {
+                                                                setErro(null)
+                                                            }
+                                                            setProdutoSelecionadoProdutoExistente(e.target.value)
+                                                        }}
+                                                        disabled={carregandoProdutos || produtosOrdenados.length === 0}
+                                                        required
+                                                    >
+                                                        <option value="">
+                                                            {carregandoProdutos ? 'Carregando produtos...' : 'Selecione um produto'}
+                                                        </option>
+                                                        {produtosOrdenados.map((produto) => (
+                                                            <option key={produto.id} value={String(produto.id)}>
+                                                                {produto.nome}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Modelo
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className={inputClasses}
+                                                        placeholder="Digite o nome do modelo"
+                                                        value={nomeModeloProdutoExistente}
+                                                        onChange={(e) => {
+                                                            if (erro) {
+                                                                setErro(null)
+                                                            }
+                                                            setNomeModeloProdutoExistente(e.target.value)
+                                                        }}
+                                                        required
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
+                                            {(!carregandoProdutos && produtosOrdenados.length === 0) && (
+                                                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+                                                    Cadastre um produto antes de criar um modelo.
+                                                </div>
+                                            )}
+                                            <div className="flex justify-end">
+                                                <button
+                                                    type="submit"
+                                                    className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
+                                                    style={{ backgroundColor: 'var(--bg-azul)' }}
+                                                    onMouseEnter={(e) => {
+                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
+                                                    }}
+                                                    disabled={
+                                                        salvandoModelo ||
+                                                        !nomeModeloProdutoExistente.trim() ||
+                                                        !produtoSelecionadoProdutoExistente ||
+                                                        produtosOrdenados.length === 0
+                                                    }
+                                                >
+                                                    <i className="bi bi-plus-circle-fill"></i>
+                                                    <span>{salvandoModelo ? 'Salvando...' : 'Cadastrar'}</span>
+                                                </button>
+                                            </div>
+                                        </form>
                                     )}
                                 </div>
-                            ) : (
+                            ) : aba === 'modelos' ? (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                     <div className="text-white px-6 py-4" style={{ backgroundColor: 'var(--bg-azul)' }}>
                                         <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -284,13 +440,13 @@ const ProdutosModelos = () => {
                                                 className={inputClasses}
                                                 value={produtoSelecionadoId}
                                                 onChange={(e) => setProdutoSelecionadoId(e.target.value)}
-                                                disabled={carregandoProdutos || produtos.length === 0}
+                                                disabled={carregandoProdutos || produtosOrdenados.length === 0}
                                                 required
                                             >
                                                 <option value="">
                                                     {carregandoProdutos ? 'Carregando produtos...' : 'Selecione um produto'}
                                                 </option>
-                                                {produtos.map((produto) => (
+                                                {produtosOrdenados.map((produto) => (
                                                     <option key={produto.id} value={String(produto.id)}>
                                                         {produto.nome}
                                                     </option>
@@ -311,7 +467,7 @@ const ProdutosModelos = () => {
                                             />
                                         </div>
 
-                                        {(!carregandoProdutos && produtos.length === 0) && (
+                                        {(!carregandoProdutos && produtosOrdenados.length === 0) && (
                                             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
                                                 Cadastre um produto antes de criar um modelo.
                                             </div>
@@ -320,25 +476,44 @@ const ProdutosModelos = () => {
                                         <div className="flex justify-end">
                                             <button
                                                 type="submit"
-                                                className="px-5 py-2.5 text-white rounded-lg transition-opacity disabled:opacity-60"
+                                                className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
                                                 style={{ backgroundColor: 'var(--bg-azul)' }}
+                                                onMouseEnter={(e) => {
+                                                    if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
+                                                }}
                                                 disabled={
                                                     salvandoModelo ||
                                                     !nomeModelo.trim() ||
                                                     !produtoSelecionadoId ||
-                                                    produtos.length === 0
+                                                    produtosOrdenados.length === 0
                                                 }
                                             >
-                                                {salvandoModelo ? 'Salvando...' : 'Cadastrar Modelo'}
+                                                <i className="bi bi-plus-circle-fill"></i>
+                                                <span>{salvandoModelo ? 'Salvando...' : 'Cadastrar'}</span>
                                             </button>
                                         </div>
                                     </form>
                                 </div>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 </div>
             </div>
+            <ModalSucesso
+                isOpen={modalSucessoAberto}
+                onClose={() => setModalSucessoAberto(false)}
+                mensagem={mensagemSucesso}
+                titulo="Sucesso!"
+            />
+            <ModalErro
+                isOpen={modalErroAberto}
+                onClose={() => setModalErroAberto(false)}
+                mensagem={mensagemErro}
+                titulo="Erro!"
+            />
         </div>
     )
 }
