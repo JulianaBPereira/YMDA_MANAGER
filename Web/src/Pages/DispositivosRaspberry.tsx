@@ -239,9 +239,7 @@ const DispositivosRaspberry = () => {
                                     </form>
                                 ) : (
                                     <>
-                                        <p className="text-gray-500 text-sm mb-4">
-                                            Dispositivos Raspberry cadastrados. Use Editar para alterar o nome e Excluir para remover.
-                                        </p>
+                                        
                                         {carregando ? (
                                             <div className="flex justify-center items-center py-12">
                                                 <p className="text-gray-500">Carregando...</p>
@@ -253,23 +251,27 @@ const DispositivosRaspberry = () => {
                                                         <tr>
                                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial</th>
                                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
                                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-40">Ações</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="bg-white divide-y divide-gray-200">
                                                         {dispositivos.map((dispositivo) => (
-                                                            <tr key={dispositivo.id} className="hover:bg-gray-50">
+                                                            <tr key={dispositivo.id} className="">
                                                                 <td className="px-4 py-3 text-sm font-medium text-gray-900 align-middle">
                                                                     {dispositivo.serial}
                                                                 </td>
                                                                 <td className="px-4 py-3 text-sm text-gray-900 align-middle">
                                                                     {dispositivo.nome || '-'}
                                                                 </td>
+                                                                <td className="px-4 py-3 text-sm text-gray-700 align-middle">
+                                                                    {dispositivo.data_registro || '-'}
+                                                                </td>
                                                                 <td className="px-4 py-3 align-middle">
                                                                     <div className="flex items-center gap-2">
                                                                         <button
                                                                             onClick={() => handleEditar(dispositivo)}
-                                                                            className="p-2 rounded transition-colors hover:opacity-80"
+                                                                            className="p-2 rounded"
                                                                             style={{ color: 'var(--bg-azul)' }}
                                                                             title="Editar dispositivo"
                                                                         >
@@ -277,7 +279,7 @@ const DispositivosRaspberry = () => {
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleExcluir(dispositivo)}
-                                                                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
+                                                                            className="text-red-600 p-2 rounded"
                                                                             title="Excluir dispositivo"
                                                                         >
                                                                             <i className="bi bi-trash"></i>
