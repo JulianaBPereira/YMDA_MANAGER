@@ -40,7 +40,6 @@ const ListagemProdutosModelos = () => {
     const [modalErroDuplicado, setModalErroDuplicado] = useState(false)
     const [mensagemErroDuplicado, setMensagemErroDuplicado] = useState('')
     const [produtoExpandido, setProdutoExpandido] = useState<number | null>(null)
-    const [showLoading, setShowLoading] = useState(false)
 
     const itensPorPagina = 10
 
@@ -71,19 +70,8 @@ const ListagemProdutosModelos = () => {
                 id: p.id,
                 nome: p.nome,
                 data_criacao: p.data_criacao,
-                modelos: (modelosPorProduto.get(p.id) ?? []).sort((a, b) => {
-                    const da = a.data_criacao ? parseDateOnlyToUTC(a.data_criacao) : 0
-                    const db = b.data_criacao ? parseDateOnlyToUTC(b.data_criacao) : 0
-                    return db - da
-                }),
+                modelos: modelosPorProduto.get(p.id) ?? [],
             }))
-
-            // Ordenar produtos do mais recente para o mais antigo
-            produtosComModelos.sort((a, b) => {
-                const da = a.data_criacao ? parseDateOnlyToUTC(a.data_criacao) : 0
-                const db = b.data_criacao ? parseDateOnlyToUTC(b.data_criacao) : 0
-                return db - da
-            })
 
             setProdutos(produtosComModelos)
             setModelos(modelosResp as Modelo[])
@@ -93,19 +81,6 @@ const ListagemProdutosModelos = () => {
             setCarregando(false)
         }
     }
-
-    // Debounce do indicador de carregamento para evitar "pisca"
-    useEffect(() => {
-        let t: number | undefined = undefined
-        if (carregando) {
-            t = window.setTimeout(() => setShowLoading(true), 200)
-        } else {
-            setShowLoading(false)
-        }
-        return () => {
-            if (t) window.clearTimeout(t)
-        }
-    }, [carregando])
 
     const produtosFiltrados = useMemo(() => {
         return produtos.filter(produto => {
@@ -143,22 +118,8 @@ const ListagemProdutosModelos = () => {
         setFiltroModelo('')
     }
 
-    const parseDateOnlyToUTC = (data: string): number => {
-        // Retorna epoch UTC para datas "YYYY-MM-DD" sem aplicar fuso local
-        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(data)
-        if (!m) return NaN
-        const y = Number(m[1]); const mo = Number(m[2]); const d = Number(m[3])
-        return Date.UTC(y, mo - 1, d, 0, 0, 0)
-    }
-
     const formatarData = (data: string | undefined) => {
         if (!data) return '-'
-        // Tratar datas no formato 'YYYY-MM-DD' ou 'YYYY-MM-DDTHH:mm:ss' como data pura (28 vira 28)
-        const ymdEpoch = parseDateOnlyToUTC(data)
-        if (!isNaN(ymdEpoch)) {
-            const d = new Date(ymdEpoch)
-            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-        }
         try {
             const date = new Date(data)
             return date.toLocaleDateString('pt-BR', {
@@ -202,12 +163,9 @@ const ListagemProdutosModelos = () => {
             }
 
             await atualizarProduto(produtoEditando.id, { nome: nomeProduto })
-            // Otimista: atualizar localmente sem bloquear UI
-            setProdutos(prev => prev.map(p => p.id === produtoEditando.id ? { ...p, nome: nomeProduto } : p))
             setModalEdicaoProdutoAberto(false)
             setProdutoEditando(null)
-            // Recarregar em segundo plano (sem piscar)
-            carregarDados()
+            await carregarDados()
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao salvar produto')
         }
@@ -254,28 +212,9 @@ const ListagemProdutosModelos = () => {
             }
 
             await atualizarModelo(modeloEditando.id, { nome: nomeModelo, produto_id: produtoId })
-            // Otimista: atualiza localmente
-            setProdutos(prev => prev.map(p => {
-                // Se mudou de produto, remover do antigo e adicionar ao novo minimamente
-                const modelosAtual = p.modelos ?? []
-                if (p.id === (modeloEditando.produto_id ?? 0)) {
-                    // remover do produto antigo
-                    return { ...p, modelos: modelosAtual.filter(m => m.id !== modeloEditando.id) }
-                }
-                if (p.id === produtoId) {
-                    // adicionar/atualizar no novo produto
-                    const ja = modelosAtual.find(m => m.id === modeloEditando.id)
-                    if (ja) {
-                        return { ...p, modelos: modelosAtual.map(m => m.id === ja.id ? { ...m, nome: nomeModelo, produto_id: produtoId } : m) }
-                    }
-                    return { ...p, modelos: [...modelosAtual, { id: modeloEditando.id, nome: nomeModelo, produto_id: produtoId, data_criacao: modeloEditando.data_criacao }] }
-                }
-                return p
-            }))
             setModalEdicaoModeloAberto(false)
             setModeloEditando(null)
-            // Recarrega em segundo plano
-            carregarDados()
+            await carregarDados()
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao salvar modelo')
         }
@@ -293,28 +232,14 @@ const ListagemProdutosModelos = () => {
 
     const handleConfirmarDeletar = async () => {
         if (!itemParaDeletar) return
-        try {
-            // Otimista: aplica no estado local primeiro
-            if (itemParaDeletar.tipo === 'produto') {
-                const id = (itemParaDeletar.item as Produto).id
-                setProdutos(prev => prev.filter(p => p.id !== id))
-                await deletarProduto(id)
-            } else {
-                const modelo = itemParaDeletar.item as Modelo
-                setProdutos(prev => prev.map(p => ({
-                    ...p,
-                    modelos: (p.modelos ?? []).filter(m => m.id !== modelo.id)
-                })))
-                await deletarModelo(modelo.id)
-            }
-        } catch (err) {
-            setErro(err instanceof Error ? err.message : 'Erro ao deletar')
-        } finally {
-            setModalConfirmacao(false)
-            setItemParaDeletar(null)
-            // Recarrega em segundo plano para garantir consistência
-            carregarDados()
+        if (itemParaDeletar.tipo === 'produto') {
+            await deletarProduto((itemParaDeletar.item as Produto).id)
+        } else {
+            await deletarModelo((itemParaDeletar.item as Modelo).id)
         }
+        setModalConfirmacao(false)
+        setItemParaDeletar(null)
+        await carregarDados()
     }
 
     const toggleExpandirProduto = (produtoId: number) => {
@@ -332,7 +257,14 @@ const ListagemProdutosModelos = () => {
                 <div className="flex-1 p-6 pt-32 pb-20 md:pb-24 md:pl-20 transition-all duration-300">
                     <div className="max-w-[95%] mx-auto">
                         <div className="flex flex-col gap-6">
-                            {/* Cabeçalho removido conforme solicitado */}
+                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                <div className="text-white px-6 py-4" style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        <i className="bi bi-box-seam"></i>
+                                        Listagem de Produtos e Modelos
+                                    </h3>
+                                </div>
+                            </div>
 
                             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                 <div className="p-6">
@@ -397,36 +329,40 @@ const ListagemProdutosModelos = () => {
                                 </div>
                             )}
 
-                            <>
+                            {carregando ? (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <div className="overflow-x-auto">
-                                        {showLoading && (
-                                            <div className="px-6 py-2 text-xs text-gray-500">Atualizando...</div>
-                                        )}
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-8"></th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelos</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data de Criação</th>
-                                                    <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {produtosFiltrados.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                                            <div className="flex flex-col items-center justify-center">
-                                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-2"></i>
-                                                                {temFiltros 
-                                                                    ? 'Nenhum produto encontrado com os filtros aplicados'
-                                                                    : 'Nenhum produto cadastrado'}
-                                                            </div>
-                                                        </td>
+                                    <div className="p-12 flex flex-col items-center justify-center">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                                        <p className="text-gray-500 text-lg font-medium">Carregando produtos e modelos...</p>
+                                    </div>
+                                </div>
+                            ) : produtosFiltrados.length === 0 ? (
+                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                    <div className="p-12 flex flex-col items-center justify-center">
+                                        <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                        <p className="text-gray-500 text-lg font-medium">
+                                            {temFiltros 
+                                                ? 'Nenhum produto encontrado com os filtros aplicados'
+                                                : 'Nenhum produto cadastrado'}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-8"></th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data de Criação</th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelos</th>
+                                                        <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
                                                     </tr>
-                                                ) : (
-                                                    produtosPaginaAtual.map((produto) => (
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {produtosPaginaAtual.map((produto) => (
                                                         <>
                                                             <tr key={produto.id} className="hover:bg-gray-50">
                                                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -441,12 +377,12 @@ const ListagemProdutosModelos = () => {
                                                                     <div className="text-sm font-medium text-gray-900">{produto.nome}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="text-sm text-gray-900">{formatarData(produto.data_criacao)}</div>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap">
                                                                     <div className="text-sm text-gray-900">
                                                                         {produto.modelos?.length || 0} modelo(s)
                                                                     </div>
-                                                                </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <div className="text-sm text-gray-900">{formatarData(produto.data_criacao)}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                                                     <div className="flex items-center justify-center gap-2">
@@ -471,12 +407,23 @@ const ListagemProdutosModelos = () => {
                                                                 <tr>
                                                                     <td colSpan={5} className="px-6 py-4 bg-gray-50">
                                                                         <div className="ml-8">
+                                                                            <h5 className="text-sm font-semibold text-gray-700 mb-2">Modelos do Produto:</h5>
                                                                             <table className="w-full">
+                                                                                <thead>
+                                                                                    <tr className="border-b border-gray-300">
+                                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Modelo</th>
+                                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Data de Criação</th>
+                                                                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Ações</th>
+                                                                                    </tr>
+                                                                                </thead>
                                                                                 <tbody>
                                                                                     {produto.modelos.map((modelo) => (
                                                                                         <tr key={modelo.id} className="border-b border-gray-200 hover:bg-gray-100">
                                                                                             <td className="px-4 py-2">
                                                                                                 <div className="text-sm text-gray-900">{modelo.nome}</div>
+                                                                                            </td>
+                                                                                            <td className="px-4 py-2">
+                                                                                                <div className="text-sm text-gray-900">{formatarData(modelo.data_criacao)}</div>
                                                                                             </td>
                                                                                             <td className="px-4 py-2 text-center">
                                                                                                 <div className="flex items-center justify-center gap-2">
@@ -505,22 +452,22 @@ const ListagemProdutosModelos = () => {
                                                                 </tr>
                                                             )}
                                                         </>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
-                                </div>
-                                
-                                {produtosFiltrados.length > itensPorPagina && (
-                                    <Paginacao
-                                        totalItens={produtosFiltrados.length}
-                                        itensPorPagina={itensPorPagina}
-                                        paginaAtual={paginaAtual}
-                                        onPageChange={setPaginaAtual}
-                                    />
-                                )}
-                            </>
+                                    
+                                    {produtosFiltrados.length > itensPorPagina && (
+                                        <Paginacao
+                                            totalItens={produtosFiltrados.length}
+                                            itensPorPagina={itensPorPagina}
+                                            paginaAtual={paginaAtual}
+                                            onPageChange={setPaginaAtual}
+                                        />
+                                    )}
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -599,15 +546,23 @@ const ListagemProdutosModelos = () => {
                     setItemParaDeletar(null)
                 }}
                 onConfirm={handleConfirmarDeletar}
-                titulo="Confirmar exclusão"
+                titulo="Confirmar Exclusão"
                 mensagem={
                     itemParaDeletar?.tipo === 'produto'
-                        ? 'Tem certeza que deseja deletar este produto?'
+                        ? 'Tem certeza que deseja deletar este produto? Todos os modelos associados também serão deletados. Esta ação não pode ser desfeita.'
                         : 'Tem certeza que deseja deletar este modelo? Esta ação não pode ser desfeita.'
                 }
                 textoConfirmar="Deletar"
                 textoCancelar="Cancelar"
                 corHeader="vermelho"
+                item={itemParaDeletar ? {
+                    nome: itemParaDeletar.tipo === 'produto' 
+                        ? (itemParaDeletar.item as Produto).nome
+                        : (itemParaDeletar.item as Modelo).nome,
+                    tipo: itemParaDeletar.tipo
+                } : undefined}
+                camposItem={['nome', 'tipo']}
+                mostrarDetalhes={true}
             />
 
             <ModalConfirmacao
@@ -620,7 +575,7 @@ const ListagemProdutosModelos = () => {
                     setModalErroDuplicado(false)
                     setMensagemErroDuplicado('')
                 }}
-                titulo="Item já cadastrado"
+                titulo="Item Já Cadastrado"
                 mensagem={mensagemErroDuplicado}
                 textoConfirmar="OK"
                 textoCancelar=""
