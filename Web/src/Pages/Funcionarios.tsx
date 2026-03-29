@@ -40,6 +40,9 @@ const Funcionarios = () => {
     const [tituloErro, setTituloErro] = useState('Erro!')
     const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<Funcionario | null>(null)
     const [paginaAtual, setPaginaAtual] = useState(1)
+    const [filtroTag, setFiltroTag] = useState('')
+    const [filtroMatricula, setFiltroMatricula] = useState('')
+    const [filtroNome, setFiltroNome] = useState('')
     const rfidInputRef = useRef<HTMLInputElement>(null)
 
     const fecharModal = () => {
@@ -199,11 +202,24 @@ const Funcionarios = () => {
         }
     }
 
+    const funcionariosFiltrados = funcionarios.filter((func) => {
+        const matchTag = !filtroTag || func.tag.toLowerCase().includes(filtroTag.toLowerCase())
+        const matchMatricula = !filtroMatricula || func.matricula.toLowerCase().includes(filtroMatricula.toLowerCase())
+        const matchNome = !filtroNome || func.nome.toLowerCase().includes(filtroNome.toLowerCase())
+        return matchTag && matchMatricula && matchNome
+    })
+
+    const temFiltros = filtroTag || filtroMatricula || filtroNome
+
     const indiceInicio = (paginaAtual - 1) * itensPorPagina
-    const funcionariosPaginaAtual = funcionarios.slice(indiceInicio, indiceInicio + itensPorPagina)
+    const funcionariosPaginaAtual = funcionariosFiltrados.slice(indiceInicio, indiceInicio + itensPorPagina)
 
     useEffect(() => {
-        const totalPaginas = Math.ceil(funcionarios.length / itensPorPagina)
+        setPaginaAtual(1)
+    }, [filtroTag, filtroMatricula, filtroNome])
+
+    useEffect(() => {
+        const totalPaginas = Math.ceil(funcionariosFiltrados.length / itensPorPagina)
         if (paginaAtual > totalPaginas && totalPaginas > 0) setPaginaAtual(totalPaginas)
     }, [funcionarios.length, paginaAtual])
 
@@ -214,26 +230,26 @@ const Funcionarios = () => {
                 <TopBar />
                 <div className="flex-1 p-6 pt-32 pb-20 md:pb-24 md:pl-20 transition-all duration-300">
                     <div className="max-w-[95%] mx-auto">
-                        <div className="bg-white rounded-lg shadow-md">
-                            {/* Abas */}
-                            <div className="flex border-b border-gray-200">
-                                {(['cadastrar', 'listar'] as const).map((aba) => (
-                                    <button
-                                        key={aba}
-                                        onClick={() => setAbaAtiva(aba)}
-                                        className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
-                                            abaAtiva === aba ? 'text-white border-b-2' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                        }`}
-                                        style={abaAtiva === aba ? { backgroundColor: 'var(--bg-azul)' } : {}}
-                                    >
-                                        <i className={`bi ${aba === 'cadastrar' ? 'bi-person-plus-fill' : 'bi-list-ul'} mr-2`}></i>
-                                        {aba === 'cadastrar' ? 'Cadastrar Funcionário' : 'Listar Funcionários'}
-                                    </button>
-                                ))}
-                            </div>
+                        {abaAtiva === 'cadastrar' ? (
+                            <div className="bg-white rounded-lg shadow-md">
+                                {/* Abas */}
+                                <div className="flex border-b border-gray-200">
+                                    {(['cadastrar', 'listar'] as const).map((aba) => (
+                                        <button
+                                            key={aba}
+                                            onClick={() => setAbaAtiva(aba)}
+                                            className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                                                abaAtiva === aba ? 'text-white border-b-2' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            }`}
+                                            style={abaAtiva === aba ? { backgroundColor: 'var(--bg-azul)' } : {}}
+                                        >
+                                            <i className={`bi ${aba === 'cadastrar' ? 'bi-person-plus-fill' : 'bi-list-ul'} mr-2`}></i>
+                                            {aba === 'cadastrar' ? 'Cadastrar Funcionário' : 'Listar Funcionários'}
+                                        </button>
+                                    ))}
+                                </div>
 
-                            <div className="p-6">
-                                {abaAtiva === 'cadastrar' ? (
+                                <div className="p-6">
                                     <form id="form-funcionario" onSubmit={handleSubmit}>
                                         <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -326,115 +342,188 @@ const Funcionarios = () => {
                                             Cadastrar Funcionário
                                         </button>
                                     </form>
-                                ) : (
-                                    <div>
-                                        {/* Cabeçalho e lista no mesmo layout de Postos */}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Abas fora do container branco */}
+                                <div className="flex border-b border-gray-200 bg-white rounded-t-lg shadow-md">
+                                    {(['cadastrar', 'listar'] as const).map((aba) => (
+                                        <button
+                                            key={aba}
+                                            onClick={() => setAbaAtiva(aba)}
+                                            className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                                                abaAtiva === aba ? 'text-white border-b-2' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            }`}
+                                            style={abaAtiva === aba ? { backgroundColor: 'var(--bg-azul)' } : {}}
+                                        >
+                                            <i className={`bi ${aba === 'cadastrar' ? 'bi-person-plus-fill' : 'bi-list-ul'} mr-2`}></i>
+                                            {aba === 'cadastrar' ? 'Cadastrar Funcionário' : 'Listar Funcionários'}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Tabela fora do container das abas */}
+                                <div className="mt-4">
+                                    {funcionarios.length > 0 && (
+                                        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-4">
+                                            <div className="p-6">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                                                        <i className="bi bi-funnel"></i>
+                                                        Filtros de Busca
+                                                    </h4>
+                                                    {temFiltros && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setFiltroTag('')
+                                                                setFiltroMatricula('')
+                                                                setFiltroNome('')
+                                                            }}
+                                                            className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                                        >
+                                                            <i className="bi bi-x-circle"></i>
+                                                            Limpar Filtros
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Tag
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            placeholder="Buscar por tag..."
+                                                            value={filtroTag}
+                                                            onChange={(e) => setFiltroTag(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Matrícula
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            placeholder="Buscar por matrícula..."
+                                                            value={filtroMatricula}
+                                                            onChange={(e) => setFiltroMatricula(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Nome
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            placeholder="Buscar por nome..."
+                                                            value={filtroNome}
+                                                            onChange={(e) => setFiltroNome(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                         {carregando ? (
                                             <div className="flex justify-center items-center py-12">
                                                 <p className="text-gray-500">Carregando funcionários...</p>
                                             </div>
-                                        ) : funcionarios.length > 0 ? (
-                                            <div className="space-y-3">
-                                                <div className="px-4 py-2 bg-blue-50 rounded-md mb-2">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="w-8" />
-                                                        <div className="grid grid-cols-5 items-center w-full gap-4">
-                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide col-span-1">
-                                                                Funcionário
-                                                            </span>
-                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
-                                                                Matrícula
-                                                            </span>
-                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
-                                                                Turno
-                                                            </span>
-                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
-                                                                RFID
-                                                            </span>
-                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-16 col-span-1">
-                                                                Data Criação
-                                                            </span>
-                                                        </div>
-                                                        <div className="w-24" />
-                                                    </div>
+                                        ) : funcionariosFiltrados.length === 0 ? (
+                                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                                <div className="p-12 flex flex-col items-center justify-center">
+                                                    <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                    <p className="text-gray-500 text-lg font-medium">
+                                                        {temFiltros
+                                                            ? 'Nenhum funcionário encontrado com os filtros aplicados'
+                                                            : 'Nenhum funcionário cadastrado'}
+                                                    </p>
                                                 </div>
-
-                                                {funcionariosPaginaAtual.map((funcionario) => (
-                                                    <div key={funcionario.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 hover:bg-gray-50 transition-colors">
-                                                        <div className="flex items-center gap-3 w-full">
-                                                            <span className="w-8 text-gray-400">
-                                                                <i className="bi bi-person-fill"></i>
-                                                            </span>
-                                                            <div className="grid grid-cols-5 items-center w-full gap-4">
-                                                                <div className="col-span-1">
-                                                                    <span className="text-sm font-medium text-gray-900">{funcionario.nome}</span>
-                                                                </div>
-                                                                <div className="col-span-1 text-center">
-                                                                    <span className="text-sm text-gray-700">{funcionario.matricula}</span>
-                                                                </div>
-                                                                <div className="col-span-1 text-center">
-                                                                    <span className="text-sm text-gray-700">
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="bg-white rounded-lg shadow-md overflow-hidden mt-0">
+                                                    <table className="w-full">
+                                                        <thead>
+                                                            <tr style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Tag</th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Matrícula</th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nome</th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Turno</th>
+                                                                <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Status</th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data Criação</th>
+                                                                <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-200">
+                                                            {funcionariosPaginaAtual.map((funcionario) => (
+                                                                <tr key={funcionario.id} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{funcionario.tag || '-'}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{funcionario.matricula}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{funcionario.nome}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                                                         {funcionario.turnos && funcionario.turnos.length > 0
                                                                             ? funcionario.turnos.map(t => t.nome).join(', ')
                                                                             : 'Não definido'}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="col-span-1 text-center">
-                                                                    <span className="text-sm text-gray-700">{funcionario.tag || '-'}</span>
-                                                                </div>
-                                                                <div className="col-span-1 text-right pr-16">
-                                                                    <span className="text-sm text-gray-500">
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${funcionario.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                                            {funcionario.ativo ? 'Ativo' : 'Inativo'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                         {funcionario.data_criacao ? new Date(funcionario.data_criacao).toLocaleDateString('pt-BR') : '-'}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 w-24 justify-end">
-                                                            <button
-                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalEditarAberto(true) }}
-                                                                className="p-2 rounded transition-colors hover:opacity-80"
-                                                                style={{ color: 'var(--bg-azul)' }}
-                                                                title="Editar funcionário"
-                                                            >
-                                                                <i className="bi bi-pencil"></i>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalStatusAberto(true) }}
-                                                                className={`p-2 rounded transition-colors hover:opacity-80 ${funcionario.ativo ? 'text-orange-600' : 'text-green-600'}`}
-                                                                title={funcionario.ativo ? 'Desativar' : 'Ativar'}
-                                                            >
-                                                                <i className={`bi ${funcionario.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalExcluirAberto(true) }}
-                                                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
-                                                                title="Excluir funcionário"
-                                                            >
-                                                                <i className="bi bi-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                                        <div className="flex items-center justify-center gap-2">
+                                                                            <button
+                                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalEditarAberto(true) }}
+                                                                                className="text-blue-600 hover:text-blue-800 transition-colors"
+                                                                                title="Editar funcionário"
+                                                                            >
+                                                                                <i className="bi bi-pencil-square"></i>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalStatusAberto(true) }}
+                                                                                className={`transition-colors hover:opacity-80 ${funcionario.ativo ? 'text-orange-600' : 'text-green-600'}`}
+                                                                                title={funcionario.ativo ? 'Desativar' : 'Ativar'}
+                                                                            >
+                                                                                <i className={`bi ${funcionario.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalExcluirAberto(true) }}
+                                                                                className="text-red-600 hover:text-red-800 transition-colors"
+                                                                                title="Excluir funcionário"
+                                                                            >
+                                                                                <i className="bi bi-trash"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
 
-                                                {funcionarios.length > itensPorPagina && (
+                                                {funcionariosFiltrados.length > itensPorPagina && (
                                                     <Paginacao
-                                                        totalItens={funcionarios.length}
+                                                        totalItens={funcionariosFiltrados.length}
                                                         itensPorPagina={itensPorPagina}
                                                         paginaAtual={paginaAtual}
                                                         onPageChange={setPaginaAtual}
                                                     />
                                                 )}
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-12">
-                                                <i className="bi bi-info-circle text-gray-300 text-5xl mb-4"></i>
-                                                <p className="text-gray-500 text-lg font-medium">Nenhum funcionário cadastrado</p>
-                                            </div>
+                                            </>
                                         )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
