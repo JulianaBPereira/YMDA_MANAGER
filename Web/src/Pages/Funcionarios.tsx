@@ -31,6 +31,7 @@ const Funcionarios = () => {
     const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
     const [carregando, setCarregando] = useState(false)
     const [carregandoTurnos, setCarregandoTurnos] = useState(true)
+    const [salvandoFuncionario, setSalvandoFuncionario] = useState(false)
     const [modalEditarAberto, setModalEditarAberto] = useState(false)
     const [modalExcluirAberto, setModalExcluirAberto] = useState(false)
     const [modalStatusAberto, setModalStatusAberto] = useState(false)
@@ -124,6 +125,8 @@ const Funcionarios = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!tag.trim()) return mostrarErro('Atenção!', 'A Tag RFID é obrigatória.')
+        if (!matricula.trim()) return mostrarErro('Atenção!', 'A matrícula é obrigatória.')
+        if (!nome.trim()) return mostrarErro('Atenção!', 'O nome é obrigatório.')
         if (turnosSelecionados.length === 0) return mostrarErro('Atenção!', 'Selecione pelo menos um turno.')
 
         // Validação simples no cliente para evitar duplicidade imediata
@@ -134,6 +137,7 @@ const Funcionarios = () => {
         }
 
         try {
+            setSalvandoFuncionario(true)
             const criado = await criarFuncionario({ tag: tagNormalizada, matricula, nome, ativo, turno_ids: turnosSelecionados })
 
             // Workaround: alguns backends podem ignorar turno_ids no POST.
@@ -155,6 +159,8 @@ const Funcionarios = () => {
             setModalSucessoAberto(true)
         } catch (error: any) {
             mostrarErro('Erro!', `Erro ao cadastrar funcionário: ${error?.message || 'Erro desconhecido'}`)
+        } finally {
+            setSalvandoFuncionario(false)
         }
     }
 
@@ -212,6 +218,13 @@ const Funcionarios = () => {
     })
 
     const temFiltros = filtroTag || filtroMatricula || filtroNome
+    const formularioCadastroInvalido =
+        salvandoFuncionario ||
+        carregandoTurnos ||
+        !tag.trim() ||
+        !matricula.trim() ||
+        !nome.trim() ||
+        turnosSelecionados.length === 0
 
     const indiceInicio = (paginaAtual - 1) * itensPorPagina
     const funcionariosPaginaAtual = funcionariosFiltrados.slice(indiceInicio, indiceInicio + itensPorPagina)
@@ -339,13 +352,18 @@ const Funcionarios = () => {
 
                                         <button
                                             type="submit"
-                                            className="flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors"
+                                            className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
                                             style={{ backgroundColor: 'var(--bg-azul)' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                                            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                            onMouseEnter={(e) => {
+                                                if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
+                                            }}
+                                            disabled={formularioCadastroInvalido}
                                         >
-                                            <i className="bi bi-person-plus-fill"></i>
-                                            Cadastrar Funcionário
+                                            <i className="bi bi-plus-circle-fill"></i>
+                                            <span>{salvandoFuncionario ? 'Salvando...' : 'Cadastrar'}</span>
                                         </button>
                                     </form>
                                 </div>
@@ -441,17 +459,6 @@ const Funcionarios = () => {
                                             <div className="flex justify-center items-center py-12">
                                                 <p className="text-gray-500">Carregando funcionários...</p>
                                             </div>
-                                        ) : funcionariosFiltrados.length === 0 ? (
-                                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                                <div className="p-12 flex flex-col items-center justify-center">
-                                                    <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
-                                                    <p className="text-gray-500 text-lg font-medium">
-                                                        {temFiltros
-                                                            ? 'Nenhum funcionário encontrado com os filtros aplicados'
-                                                            : 'Nenhum funcionário cadastrado'}
-                                                    </p>
-                                                </div>
-                                            </div>
                                         ) : (
                                             <>
                                                 <div className="bg-white rounded-lg shadow-md overflow-hidden mt-0">
@@ -468,51 +475,66 @@ const Funcionarios = () => {
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-200">
-                                                            {funcionariosPaginaAtual.map((funcionario) => (
-                                                                <tr key={funcionario.id} className="hover:bg-gray-50">
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{funcionario.tag || '-'}</td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{funcionario.matricula}</td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{funcionario.nome}</td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                                                        {funcionario.turnos && funcionario.turnos.length > 0
-                                                                            ? funcionario.turnos.map(t => t.nome).join(', ')
-                                                                            : 'Não definido'}
-                                                                    </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${funcionario.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                                            {funcionario.ativo ? 'Ativo' : 'Inativo'}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                        {funcionario.data_criacao ? new Date(funcionario.data_criacao).toLocaleDateString('pt-BR') : '-'}
-                                                                    </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                                        <div className="flex items-center justify-center gap-2">
-                                                                            <button
-                                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalEditarAberto(true) }}
-                                                                                className="text-blue-600 hover:text-blue-800 transition-colors"
-                                                                                title="Editar funcionário"
-                                                                            >
-                                                                                <i className="bi bi-pencil-square"></i>
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalStatusAberto(true) }}
-                                                                                className={`transition-colors hover:opacity-80 ${funcionario.ativo ? 'text-orange-600' : 'text-green-600'}`}
-                                                                                title={funcionario.ativo ? 'Desativar' : 'Ativar'}
-                                                                            >
-                                                                                <i className={`bi ${funcionario.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalExcluirAberto(true) }}
-                                                                                className="text-red-600 hover:text-red-800 transition-colors"
-                                                                                title="Excluir funcionário"
-                                                                            >
-                                                                                <i className="bi bi-trash"></i>
-                                                                            </button>
+                                                            {funcionariosFiltrados.length === 0 ? (
+                                                                <tr>
+                                                                    <td colSpan={7} className="px-6 py-12">
+                                                                        <div className="flex flex-col items-center justify-center">
+                                                                            <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                                            <p className="text-gray-500 text-lg font-medium text-center">
+                                                                                {temFiltros
+                                                                                    ? 'Nenhum funcionário encontrado com os filtros aplicados'
+                                                                                    : 'Nenhum funcionário cadastrado'}
+                                                                            </p>
                                                                         </div>
                                                                     </td>
                                                                 </tr>
-                                                            ))}
+                                                            ) : (
+                                                                funcionariosPaginaAtual.map((funcionario) => (
+                                                                    <tr key={funcionario.id} className="hover:bg-gray-50">
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{funcionario.tag || '-'}</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{funcionario.matricula}</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{funcionario.nome}</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                                            {funcionario.turnos && funcionario.turnos.length > 0
+                                                                                ? funcionario.turnos.map(t => t.nome).join(', ')
+                                                                                : 'Não definido'}
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${funcionario.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                                                {funcionario.ativo ? 'Ativo' : 'Inativo'}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                            {funcionario.data_criacao ? new Date(funcionario.data_criacao).toLocaleDateString('pt-BR') : '-'}
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                                            <div className="flex items-center justify-center gap-2">
+                                                                                <button
+                                                                                    onClick={() => { setFuncionarioSelecionado(funcionario); setModalEditarAberto(true) }}
+                                                                                    className="text-blue-600 hover:text-blue-800 transition-colors"
+                                                                                    title="Editar funcionário"
+                                                                                >
+                                                                                    <i className="bi bi-pencil-square"></i>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => { setFuncionarioSelecionado(funcionario); setModalStatusAberto(true) }}
+                                                                                    className={`transition-colors hover:opacity-80 ${funcionario.ativo ? 'text-orange-600' : 'text-green-600'}`}
+                                                                                    title={funcionario.ativo ? 'Desativar' : 'Ativar'}
+                                                                                >
+                                                                                    <i className={`bi ${funcionario.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => { setFuncionarioSelecionado(funcionario); setModalExcluirAberto(true) }}
+                                                                                    className="text-red-600 hover:text-red-800 transition-colors"
+                                                                                    title="Excluir funcionário"
+                                                                                >
+                                                                                    <i className="bi bi-trash"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))
+                                                            )}
                                                         </tbody>
                                                     </table>
                                                 </div>

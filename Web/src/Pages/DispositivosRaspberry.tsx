@@ -4,6 +4,7 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
+import ModalFormulario from '../Components/Compartilhados/ModalFormulario'
 import { listarDispositivos, criarDispositivo, atualizarDispositivo, deletarDispositivo } from '../services/dispositivos'
 
 interface DispositivoRaspberry {
@@ -16,7 +17,7 @@ interface DispositivoRaspberry {
 const DispositivosRaspberry = () => {
     const [abaAtiva, setAbaAtiva] = useState<'cadastrar' | 'listar'>('cadastrar')
     const [dispositivos, setDispositivos] = useState<DispositivoRaspberry[]>([])
-    const [carregando, setCarregando] = useState(false)
+    const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false)
 
     const [serialNovo, setSerialNovo] = useState('')
     const [nomeNovo, setNomeNovo] = useState('')
@@ -41,59 +42,43 @@ const DispositivosRaspberry = () => {
     }, [abaAtiva])
 
     const carregarDispositivos = async () => {
-        setCarregando(true)
         try {
             const resp = await listarDispositivos()
             setDispositivos(resp.map(d => ({
                 id: d.id,
                 serial: d.serial_number,
                 nome: d.nome,
-				data_registro: d.data_criacao,
+                data_registro: d.data_criacao,
             })))
         } catch (e: any) {
             setTituloErro('Erro!')
             setMensagemErro(e?.message || 'Erro ao carregar dispositivos')
             setModalErroAberto(true)
             setDispositivos([])
-        } finally {
-            setCarregando(false)
         }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        const serial = serialNovo.trim()
+        if (!serial) {
+            setMensagemErro('Informe o serial do dispositivo.')
+            setModalErroAberto(true)
+            return
+        }
+        setSalvando(true)
         try {
-            if (dispositivoEditando) {
-                const nome = nomeNovo.trim()
-                setSalvando(true)
-                await atualizarDispositivo(dispositivoEditando.id, {
-                    nome,
-                    serial_number: dispositivoEditando.serial, // serial não editável aqui
-                })
-                setMensagemSucesso('Dispositivo atualizado com sucesso!')
-                setModalSucessoAberto(true)
-                setDispositivoEditando(null)
-                limparFormulario()
-            } else {
-                const serial = serialNovo.trim()
-                if (!serial) {
-                    setMensagemErro('Informe o serial do dispositivo.')
-                    setModalErroAberto(true)
-                    return
-                }
-                setSalvando(true)
-                await criarDispositivo({
-                    nome: nomeNovo.trim(),
-                    serial_number: serial,
-                })
-                setMensagemSucesso('Dispositivo cadastrado com sucesso!')
-                setModalSucessoAberto(true)
-                limparFormulario()
-            }
+            await criarDispositivo({
+                nome: nomeNovo.trim(),
+                serial_number: serial,
+            })
+            setMensagemSucesso('Dispositivo cadastrado com sucesso!')
+            setModalSucessoAberto(true)
+            limparFormulario()
             await carregarDispositivos()
         } catch (e: any) {
             setTituloErro('Erro!')
-            setMensagemErro(e?.message || 'Erro ao salvar dispositivo')
+            setMensagemErro(e?.message || 'Erro ao cadastrar dispositivo')
             setModalErroAberto(true)
         } finally {
             setSalvando(false)
@@ -107,14 +92,26 @@ const DispositivosRaspberry = () => {
 
     const handleEditar = (dispositivo: DispositivoRaspberry) => {
         setDispositivoEditando(dispositivo)
-        setSerialNovo(dispositivo.serial)
-        setNomeNovo(dispositivo.nome || '')
-        setAbaAtiva('cadastrar')
+        setModalEdicaoAberto(true)
     }
 
-    const cancelarEdicao = () => {
-        setDispositivoEditando(null)
-        limparFormulario()
+    const handleSalvarEdicao = async (dados: Record<string, any>) => {
+        if (!dispositivoEditando) return
+        try {
+            await atualizarDispositivo(dispositivoEditando.id, {
+                nome: dados.nome?.trim() || '',
+                serial_number: dispositivoEditando.serial,
+            })
+            setModalEdicaoAberto(false)
+            setDispositivoEditando(null)
+            await carregarDispositivos()
+            setMensagemSucesso('Dispositivo atualizado com sucesso!')
+            setModalSucessoAberto(true)
+        } catch (e: any) {
+            setTituloErro('Erro!')
+            setMensagemErro(e?.message || 'Erro ao atualizar dispositivo')
+            setModalErroAberto(true)
+        }
     }
 
     const handleExcluir = (dispositivo: DispositivoRaspberry) => {
@@ -146,6 +143,20 @@ const DispositivosRaspberry = () => {
         setDispositivoAExcluir(null)
     }
 
+    const formatarData = (data: string | undefined) => {
+        if (!data) return '-'
+
+        try {
+            return new Date(data).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+            })
+        } catch {
+            return data
+        }
+    }
+
     return (
         <div className="flex min-h-screen bg-gray-50">
             <MenuLateral />
@@ -156,10 +167,7 @@ const DispositivosRaspberry = () => {
                         <div className="bg-white rounded-lg shadow-md overflow-hidden">
                             <div className="flex border-b border-gray-200">
                                 <button
-                                    onClick={() => {
-                                        setAbaAtiva('cadastrar')
-                                        cancelarEdicao()
-                                    }}
+                                    onClick={() => setAbaAtiva('cadastrar')}
                                     className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
                                         abaAtiva === 'cadastrar'
                                             ? 'text-white border-b-2'
@@ -180,12 +188,12 @@ const DispositivosRaspberry = () => {
                                     style={abaAtiva === 'listar' ? { backgroundColor: 'var(--bg-azul)' } : {}}
                                 >
                                     <i className="bi bi-list-ul mr-2"></i>
-                                    Listar Dispositivos
+                                    Listar
                                 </button>
                             </div>
 
-                            <div className="p-6">
-                                {abaAtiva === 'cadastrar' ? (
+                            <div className={abaAtiva === 'cadastrar' ? 'p-6' : ''}>
+                                {abaAtiva === 'cadastrar' && (
                                     <form onSubmit={handleSubmit}>
                                         <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -193,12 +201,11 @@ const DispositivosRaspberry = () => {
                                             </label>
                                             <input
                                                 type="text"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 value={serialNovo}
                                                 onChange={(e) => setSerialNovo(e.target.value)}
                                                 placeholder="Ex: 10000000abc12345"
-                                                disabled={!!dispositivoEditando}
-                                                required={!dispositivoEditando}
+                                                required
                                             />
                                         </div>
                                         <div className="mb-4">
@@ -216,106 +223,83 @@ const DispositivosRaspberry = () => {
                                         <div className="flex gap-3">
                                             <button
                                                 type="submit"
-                                                disabled={salvando || (!dispositivoEditando && !serialNovo.trim())}
+                                                disabled={salvando || !serialNovo.trim()}
                                                 className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
                                                 style={{ backgroundColor: 'var(--bg-azul)' }}
                                                 onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.opacity = '0.9')}
                                                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                                             >
-												<i className={dispositivoEditando ? 'bi bi-check-lg' : 'bi bi-plus-circle-fill'}></i>
-												<span>{dispositivoEditando ? (salvando ? 'Salvando...' : 'Salvar') : (salvando ? 'Cadastrando...' : 'Cadastrar')}</span>
+                                                <i className="bi bi-plus-circle-fill"></i>
+                                                <span>{salvando ? 'Cadastrando...' : 'Cadastrar'}</span>
                                             </button>
-                                            {dispositivoEditando && (
-                                                <button
-                                                    type="button"
-                                                    onClick={cancelarEdicao}
-                                                    className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-                                                >
-                                                    <i className="bi bi-x-circle"></i>
-                                                    <span>Cancelar</span>
-                                                </button>
-                                            )}
                                         </div>
                                     </form>
-                                ) : (
-                                    <>
-                                     
-                                        {carregando ? (
-                                            <div className="flex justify-center items-center py-12">
-                                                <p className="text-gray-500">Carregando...</p>
-                                            </div>
-										) : dispositivos.length > 0 ? (
-											<div>
-												<div className="px-4 py-2 bg-blue-50 rounded-md mb-2">
-													<div className="flex items-center gap-3">
-														<span className="w-8" />
-														<div className="grid grid-cols-3 items-center w-full gap-4">
-															<span className="text-xs font-semibold text-gray-600 uppercase tracking-wide col-span-1">
-																Serial
-															</span>
-															<span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
-																Nome
-															</span>
-															<span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-8 col-span-1">
-																Data Registro
-															</span>
-														</div>
-														<div className="w-24" />
-													</div>
-												</div>
-
-												<div className="space-y-3">
-													{dispositivos.map((dispositivo) => (
-														<div key={dispositivo.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 hover:bg-gray-50 transition-colors">
-															<div className="flex items-center gap-3 w-full">
-																<span className="w-8 text-gray-400">
-																	<i className="bi bi-cpu"></i>
-																</span>
-																<div className="grid grid-cols-3 items-center w-full gap-4">
-																	<div className="col-span-1">
-																		<span className="text-sm font-medium text-gray-900">{dispositivo.serial}</span>
-																	</div>
-																	<div className="col-span-1 text-center">
-																		<span className="text-sm text-gray-700">{dispositivo.nome || '-'}</span>
-																	</div>
-																	<div className="col-span-1 text-right pr-8">
-																		<span className="text-sm text-gray-500">
-																			{dispositivo.data_registro ? new Date(dispositivo.data_registro).toLocaleDateString('pt-BR') : '-'}
-																		</span>
-																	</div>
-																</div>
-															</div>
-															<div className="flex items-center gap-2 w-24 justify-end">
-																<button
-																	onClick={() => handleEditar(dispositivo)}
-																	className="p-2 rounded transition-colors hover:opacity-80"
-																	style={{ color: 'var(--bg-azul)' }}
-																	title="Editar dispositivo"
-																>
-																	<i className="bi bi-pencil"></i>
-																</button>
-																<button
-																	onClick={() => handleExcluir(dispositivo)}
-																	className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
-																	title="Excluir dispositivo"
-																>
-																	<i className="bi bi-trash"></i>
-																</button>
-															</div>
-														</div>
-													))}
-												</div>
-											</div>
-										) : (
-											<div className="flex flex-col items-center justify-center py-12">
-												<i className="bi bi-info-circle text-gray-300 text-5xl mb-4"></i>
-												<p className="text-gray-500 text-lg font-medium">Nenhum dispositivo cadastrado</p>
-											</div>
-										)}
-                                    </>
                                 )}
                             </div>
                         </div>
+
+                        {abaAtiva === 'listar' && (
+                            <div className="flex flex-col gap-6 mt-6">
+                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Serial</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nome</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data Registro</th>
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Acoes</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {dispositivos.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={4} className="px-6 py-12 text-center">
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                                <p className="text-gray-500 text-lg font-medium">Nenhum dispositivo cadastrado</p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    dispositivos.map((dispositivo) => (
+                                                        <tr key={dispositivo.id} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm font-medium text-gray-900">{dispositivo.serial}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm text-gray-900">{dispositivo.nome || '-'}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm text-gray-900">{formatarData(dispositivo.data_registro)}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleEditar(dispositivo)}
+                                                                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                                                                        title="Editar dispositivo"
+                                                                    >
+                                                                        <i className="bi bi-pencil-square"></i>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleExcluir(dispositivo)}
+                                                                        className="text-red-600 hover:text-red-800 transition-colors"
+                                                                        title="Excluir dispositivo"
+                                                                    >
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -337,10 +321,48 @@ const DispositivosRaspberry = () => {
                 onClose={fecharModalExcluir}
                 onConfirm={handleConfirmarExclusao}
                 titulo="Excluir dispositivo"
-				mensagem="tem certeza que deseja excluir este dispositvo ?"
+                mensagem="tem certeza que deseja excluir este dispositvo ?"
                 textoConfirmar={excluindo ? 'Excluindo...' : 'Excluir'}
                 textoCancelar="Cancelar"
-				corHeader="vermelho"
+                corHeader="vermelho"
+            />
+            <ModalFormulario
+                isOpen={modalEdicaoAberto}
+                onClose={() => {
+                    setModalEdicaoAberto(false)
+                    setDispositivoEditando(null)
+                }}
+                onSave={handleSalvarEdicao}
+                itemEditando={
+                    dispositivoEditando
+                        ? {
+                              serial: dispositivoEditando.serial,
+                              nome: dispositivoEditando.nome || '',
+                          }
+                        : null
+                }
+                tituloNovo="Novo Dispositivo"
+                tituloEditar="Editar Dispositivo"
+                campos={[
+                    {
+                        nome: 'serial',
+                        label: 'Serial',
+                        tipo: 'text',
+                        placeholder: 'Ex: 10000000abc12345',
+                        required: false,
+                        disabled: true,
+                    },
+                    {
+                        nome: 'nome',
+                        label: 'Nome (opcional)',
+                        tipo: 'text',
+                        placeholder: 'Ex: RFID13',
+                        required: false,
+                    },
+                ]}
+                textoBotao="Salvar"
+                icone="bi bi-cpu"
+                secaoTitulo="Informacoes do Dispositivo"
             />
         </div>
     )

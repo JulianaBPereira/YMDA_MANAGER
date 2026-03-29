@@ -34,6 +34,7 @@ const Linhas = () => {
     // Estados para cadastro composto
     const [nomeLinha, setNomeLinha] = useState('')
     const [nomeSublinha, setNomeSublinha] = useState('')
+    const [salvandoCadastro, setSalvandoCadastro] = useState(false)
 
     // Estados para listagem
     const [linhas, setLinhas] = useState<Linha[]>([])
@@ -115,6 +116,7 @@ const Linhas = () => {
         }
 
         try {
+            setSalvandoCadastro(true)
             const linhasExistentes = await listarLinhas()
             const jaExisteCombinacao = Array.isArray(linhasExistentes)
                 ? linhasExistentes.some((linha: any) =>
@@ -148,6 +150,8 @@ const Linhas = () => {
             setTituloErro('Erro!')
             setMensagemErro(e?.message || 'Erro ao criar linha e sublinha')
             setModalErroAberto(true)
+        } finally {
+            setSalvandoCadastro(false)
         }
     }
 
@@ -282,6 +286,10 @@ const Linhas = () => {
     const indiceInicio = (paginaAtual - 1) * itensPorPagina
     const linhasPaginaAtual = linhasFiltradas.slice(indiceInicio, indiceInicio + itensPorPagina)
     const temFiltros = Boolean(filtroLinha)
+    const formularioCadastroInvalido =
+        salvandoCadastro ||
+        !nomeLinha.trim() ||
+        !nomeSublinha.trim()
     const inputClasses =
         'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
 
@@ -364,17 +372,18 @@ const Linhas = () => {
                                         <div className="flex gap-3 mt-4">
                                             <button
                                                 type="submit"
-                                                className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                                                className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
                                                 style={{ backgroundColor: 'var(--bg-azul)' }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.opacity = '0.9'
+                                                    if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.opacity = '1'
+                                                    if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
                                                 }}
+                                                disabled={formularioCadastroInvalido}
                                             >
                                                 <i className="bi bi-plus-circle-fill"></i>
-                                                <span>Cadastrar</span>
+                                                <span>{salvandoCadastro ? 'Salvando...' : 'Cadastrar'}</span>
                                             </button>
                                         </div>
                                     </form>
