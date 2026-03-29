@@ -9,11 +9,11 @@ import Linhas from "./Pages/Linhas";
 import Postos from "./Pages/Postos";
 import Operacoes from "./Pages/Operacoes";
 import Usuarios from "./Pages/Usuarios";
-import Modelos from "./Pages/Modelos";
 import ListagemPecas from "./Pages/ListagemPecas";
 import ListagemProdutosModelos from "./Pages/ListagemProdutosModelos";
 import CadastroUsuario from "./Pages/CadastroUsuario";
 import DispositivosRaspberry from "./Pages/DispositivosRaspberry";
+import ProdutosModelos from "./Pages/ProdutosModelos";
 
 
 function App() {
@@ -45,7 +45,7 @@ function App() {
         path="/cadastro-produto-modelo" 
         element={
           <ProtectedRoute onlyAdmin>
-            <Modelos />
+            <ProdutosModelos />
           </ProtectedRoute>
         } 
       />
