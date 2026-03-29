@@ -29,6 +29,12 @@ class Funcionario(Base):
         back_populates="funcionarios"
     )
 
+    operacoes = relationship(
+        "Operacao",
+        secondary="funcionario_operacoes",
+        back_populates="funcionarios"
+    )
+
     registros = relationship(
         "RegistroProducao",
         back_populates="funcionario"
@@ -54,3 +60,10 @@ class FuncionarioTurnos(Base):
 
     funcionario_id = Column(Integer, ForeignKey('funcionarios.id'), primary_key=True)
     turno_id = Column(Integer, ForeignKey('turnos.id'), primary_key=True)
+
+
+class FuncionarioOperacoes(Base):
+    __tablename__ = 'funcionario_operacoes'
+
+    funcionario_id = Column(Integer, ForeignKey('funcionarios.id'), primary_key=True)
+    operacao_id = Column(Integer, ForeignKey('operacoes.id'), primary_key=True)

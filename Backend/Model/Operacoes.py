@@ -34,6 +34,12 @@ class Operacao(Base):
         back_populates="operacoes"
     )
 
+    funcionarios = relationship(
+        "Funcionario",
+        secondary="funcionario_operacoes",
+        back_populates="operacoes"
+    )
+
     registros = relationship(
         "RegistroProducao", 
         back_populates="operacao"

@@ -45,6 +45,14 @@ CREATE TABLE funcionario_turnos (
     FOREIGN KEY (turno_id) REFERENCES turnos(id) ON DELETE CASCADE
 );
 
+CREATE TABLE funcionario_operacoes (
+    funcionario_id INTEGER,
+    operacao_id INTEGER,
+    PRIMARY KEY (funcionario_id, operacao_id),
+    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (operacao_id) REFERENCES operacoes(id) ON DELETE CASCADE
+);
+
 -- =========================
 -- LINHAS E SUBLINHAS
 -- =========================

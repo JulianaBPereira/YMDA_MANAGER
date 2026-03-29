@@ -5,6 +5,11 @@ export interface Turno {
     nome: string
 }
 
+export interface OperacaoResumo {
+    id: number
+    nome: string
+}
+
 export interface Funcionario {
     id: number
     tag: string
@@ -15,6 +20,7 @@ export interface Funcionario {
     expiracao_tag_temporaria: string | null
     data_criacao: string
     turnos: Turno[]
+    operacoes: OperacaoResumo[]
 }
 
 // Espelho de FuncionarioCreate do backend
@@ -25,6 +31,7 @@ export interface CriarFuncionarioData {
     ativo?: boolean
     tag_temporaria?: string
     turno_ids: number[]   // obrigatório, mínimo 1
+    operacao_ids?: number[]
 }
 
 // Espelho de FuncionarioUpdate do backend
@@ -35,6 +42,7 @@ export interface AtualizarFuncionarioData {
     ativo: boolean        // obrigatório
     tag_temporaria?: string
     turno_ids: number[]   // obrigatório, mínimo 1
+    operacao_ids?: number[]
 }
 
 // ─── Funções de serviço ───────────────────────────────────────────────────────

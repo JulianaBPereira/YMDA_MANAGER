@@ -11,6 +11,14 @@ class TurnoSchema(BaseModel):
         from_attributes = True
 
 
+class OperacaoResumoSchema(BaseModel):
+    id: int
+    nome: str
+
+    class Config:
+        from_attributes = True
+
+
 class FuncionarioCreate(BaseModel):
     tag: str
     matricula: str
@@ -18,6 +26,7 @@ class FuncionarioCreate(BaseModel):
     tag_temporaria: Optional[str] = None
     ativo: bool = True
     turno_ids: list[int]
+    operacao_ids: list[int] = []
 
 
 class FuncionarioUpdate(BaseModel):
@@ -27,6 +36,7 @@ class FuncionarioUpdate(BaseModel):
     tag_temporaria: Optional[str] = None
     ativo: bool
     turno_ids: list[int]
+    operacao_ids: list[int] = []
 
 
 class TagTemporariaSet(BaseModel):
@@ -43,6 +53,7 @@ class FuncionarioResponse(BaseModel):
     expiracao_tag_temporaria: Optional[datetime]  # quando a tag temporária expira
     data_criacao: datetime
     turnos: list[TurnoSchema]
+    operacoes: list[OperacaoResumoSchema]
 
     class Config:
         from_attributes = True

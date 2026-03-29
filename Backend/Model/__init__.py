@@ -1,5 +1,5 @@
 from .Dispositivos import DispositivoRaspberry
-from .Funcionarios import Funcionario, Turnos, FuncionarioTurnos
+from .Funcionarios import Funcionario, Turnos, FuncionarioTurnos, FuncionarioOperacoes
 from .Linhas import Linha, Sublinha
 from .Operacoes import Operacao, OperacaoPecas
 from .Postos import Posto

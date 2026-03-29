@@ -23,7 +23,8 @@ class FuncionarioService:
             nome=dados.nome,
             tag_temporaria=dados.tag_temporaria,
             ativo=dados.ativo,
-            turno_ids=dados.turno_ids
+            turno_ids=dados.turno_ids,
+            operacao_ids=dados.operacao_ids,
         )
 
     def atualizar(self, funcionario_id: int, dados: FuncionarioUpdate):
@@ -40,7 +41,8 @@ class FuncionarioService:
             nome=dados.nome,
             tag_temporaria=dados.tag_temporaria,
             ativo=dados.ativo,
-            turno_ids=dados.turno_ids
+            turno_ids=dados.turno_ids,
+            operacao_ids=dados.operacao_ids,
         )
 
     def deletar(self, funcionario_id: int):

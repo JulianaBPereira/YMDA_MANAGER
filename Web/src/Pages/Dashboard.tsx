@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 import MenuLateral from '../Components/MenuLateral/MenuLateral';
 import TopBar from '../Components/topBar/TopBar';
@@ -25,6 +25,201 @@ interface Sublinha {
   postos: CardProps[];
 }
 
+interface DashboardCardProps {
+  posto: string;
+  mod: string;
+  peca_nome: string;
+  qtd_real: number;
+  operador: string;
+  habilitado: boolean | null;
+  turno?: string;
+  operacao_nome?: string;
+  comentario?: string;
+  comentario_aviso?: string;
+}
+
+const Card = ({
+  posto,
+  mod,
+  peca_nome,
+  qtd_real,
+  operador,
+  habilitado,
+  turno,
+  operacao_nome,
+  comentario,
+  comentario_aviso,
+}: DashboardCardProps) => {
+  const statusAtivo = habilitado !== false;
+  const statusTexto = statusAtivo ? 'Habilitado' : 'Desabilitado';
+  const quantidadeTexto = `${qtd_real || 0} pcs / ${peca_nome || mod || 'sem modelo'}`;
+
+  return (
+    <article className="overflow-hidden rounded border border-[#d3d6dc] bg-[#f4f5f7] shadow-sm">
+      <header className="flex items-center justify-between border-b border-[#6c8fb4] bg-[#5b83b2] px-2 py-1">
+        <h3 className="text-[11px] font-semibold text-white">{posto}</h3>
+        <span className="flex items-center gap-1 text-[10px] text-white/95">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${statusAtivo ? 'bg-orange-300' : 'bg-red-300'}`}
+          />
+          {statusTexto}
+        </span>
+      </header>
+
+      <div className="space-y-1 p-1.5">
+        <div className="grid grid-cols-2 gap-1">
+          <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
+            <p className="mb-0.5 text-[9px] text-gray-500">Quantidade</p>
+            <p className="text-[10px] font-medium text-gray-700">{quantidadeTexto}</p>
+          </div>
+
+          <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
+            <p className="mb-0.5 text-[9px] text-gray-500">Operador</p>
+            <p className="text-[10px] font-medium text-gray-700">{operador || 'Sem operador'}</p>
+          </div>
+        </div>
+
+        <div className="rounded border border-[#d9dce2] bg-white px-1.5 py-1 text-[10px] text-gray-600">
+          {operacao_nome || turno || 'Nao definido'}
+        </div>
+
+        <div className="rounded border border-[#d9dce2] bg-white px-1.5 py-1 text-[10px] text-gray-600">
+          {comentario_aviso || comentario || 'Comentario...'}
+        </div>
+      </div>
+    </article>
+  );
+};
+
+const SUBLINHAS_FIXAS: Sublinha[] = [
+  {
+    sublinha_id: 1,
+    nome: 'SUBLINHA 1',
+    postos: [
+      {
+        posto_id: 1,
+        posto: 'POSTO 1',
+        mod: 'MOD 01',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 2,
+        posto: 'POSTO 2',
+        mod: 'MOD 02',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 3,
+        posto: 'POSTO 3',
+        mod: 'MOD 03',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 4,
+        posto: 'POSTO 4',
+        mod: 'MOD 04',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+    ],
+  },
+  {
+    sublinha_id: 2,
+    nome: 'SUBLINHA 2',
+    postos: [
+      {
+        posto_id: 5,
+        posto: 'POSTO 5',
+        mod: 'MOD 05',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 6,
+        posto: 'POSTO 6',
+        mod: 'MOD 06',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 7,
+        posto: 'POSTO 7',
+        mod: 'MOD 07',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 8,
+        posto: 'POSTO 8',
+        mod: 'MOD 08',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+    ],
+  },
+  {
+    sublinha_id: 3,
+    nome: 'SUBLINHA 3',
+    postos: [
+      {
+        posto_id: 9,
+        posto: 'POSTO 9',
+        mod: 'MOD 09',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 10,
+        posto: 'POSTO 10',
+        mod: 'MOD 10',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 11,
+        posto: 'POSTO 11',
+        mod: 'MOD 11',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+      {
+        posto_id: 12,
+        posto: 'POSTO 12',
+        mod: 'MOD 12',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: true,
+      },
+    ],
+  },
+];
+
 const Dashboard = () => {
   const processos = [
     { id: 'sub_linha_chassi', nome: 'SUB LINHA CHASSI' },
@@ -34,12 +229,14 @@ const Dashboard = () => {
   const [selectAberto, setSelectAberto] = useState(false);
   const [sublinhas, setSublinhas] = useState<Sublinha[]>([]);
   const [carregando, setCarregando] = useState(false);
-  const dadosCarregados = useRef(false);
 
   // Removido: WebSocket e chamadas ao backend antigo
   useEffect(() => {
     setCarregando(false);
+    setSublinhas([]);
   }, []);
+
+  const sublinhasExibidas = sublinhas.length > 0 ? sublinhas : SUBLINHAS_FIXAS;
 
   // Removido: funções que chamavam o backend antigo
 
@@ -90,7 +287,7 @@ const Dashboard = () => {
                 <span className="truncate">
                   {processos.find(p => p.id === processoSelecionado)?.nome || 'Selecione'}
                 </span>
-                <i className={`bi bi-chevron-${selectAberto ? 'up' : 'down'} ml-2 flex-shrink-0`}></i>
+                <i className={`bi bi-chevron-${selectAberto ? 'up' : 'down'} ml-2 shrink-0`}></i>
               </button>
               
               {/* Dropdown de Opções */}
@@ -124,15 +321,11 @@ const Dashboard = () => {
             <div className="text-center py-8">
               <p className="text-gray-600">Carregando dados do dashboard...</p>
             </div>
-          ) : sublinhas.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600">Nenhum posto encontrado</p>
-            </div>
           ) : (
-            sublinhas.map((sublinha) => (
+            sublinhasExibidas.map((sublinha) => (
               <div key={sublinha.sublinha_id} className="mb-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-3">{sublinha.nome}</h2>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {sublinha.postos.map((item) => (
                     <Card
                       key={`${sublinha.sublinha_id}-${item.posto_id}`}

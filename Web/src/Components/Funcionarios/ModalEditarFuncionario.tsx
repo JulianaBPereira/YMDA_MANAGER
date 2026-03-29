@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ModalSucesso from '../Modais/ModalSucesso'
 import ModalErro from '../Modais/ModalErro'
 import {
     type Funcionario,
+    type OperacaoResumo,
     type Turno,
     type AtualizarFuncionarioData,
     adicionarTagTemporaria,
@@ -15,14 +16,17 @@ interface ModalEditarFuncionarioProps {
     onSave: (dados: AtualizarFuncionarioData) => void
     funcionarioEditando?: Funcionario | null
     turnosDisponiveis: Turno[]
+    operacoesDisponiveis: OperacaoResumo[]
 }
 
-const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, turnosDisponiveis }: ModalEditarFuncionarioProps) => {
+const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, turnosDisponiveis, operacoesDisponiveis }: ModalEditarFuncionarioProps) => {
     const [matricula, setMatricula] = useState('')
     const [nome, setNome] = useState('')
     const [tag, setTag] = useState('')
     const [ativo, setAtivo] = useState(true)
     const [turnosSelecionados, setTurnosSelecionados] = useState<number[]>([])
+    const [operacoesSelecionadas, setOperacoesSelecionadas] = useState<number[]>([])
+    const [dropdownOperacoesAberto, setDropdownOperacoesAberto] = useState(false)
     const [tagTemporaria, setTagTemporaria] = useState('')
     const [salvandoTag, setSalvandoTag] = useState(false)
     const [removendoTag, setRemovendoTag] = useState(false)
@@ -33,6 +37,7 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
     const [mensagemSucesso, setMensagemSucesso] = useState('')
     const [mensagemErro, setMensagemErro] = useState('')
     const [tituloErro, setTituloErro] = useState('Erro!')
+    const operacoesDropdownRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         if (funcionarioEditando) {
@@ -41,20 +46,35 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
             setTag(funcionarioEditando.tag)
             setAtivo(funcionarioEditando.ativo)
             setTurnosSelecionados(funcionarioEditando.turnos.map(t => t.id))
+            setOperacoesSelecionadas(funcionarioEditando.operacoes.map(o => o.id))
             setTagTemporaria('')
             setTagTemporariaAtual(funcionarioEditando.tag_temporaria)
             setExpiracaoTagAtual(funcionarioEditando.expiracao_tag_temporaria)
+            setDropdownOperacoesAberto(false)
         } else {
             setMatricula('')
             setNome('')
             setTag('')
             setAtivo(true)
             setTurnosSelecionados([])
+            setOperacoesSelecionadas([])
             setTagTemporaria('')
             setTagTemporariaAtual(null)
             setExpiracaoTagAtual(null)
+            setDropdownOperacoesAberto(false)
         }
     }, [funcionarioEditando])
+
+    useEffect(() => {
+        const handleClickFora = (event: MouseEvent) => {
+            if (!operacoesDropdownRef.current?.contains(event.target as Node)) {
+                setDropdownOperacoesAberto(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickFora)
+        return () => document.removeEventListener('mousedown', handleClickFora)
+    }, [])
 
     const normalizarTag = (valor: string) => valor.replace(/[\r\n\t\0]/g, '').trim()
 
@@ -136,9 +156,17 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
             nome,
             ativo,
             turno_ids: turnosSelecionados,
+            operacao_ids: operacoesSelecionadas,
         })
         onClose()
     }
+
+    const resumoOperacoesSelecionadas =
+        operacoesSelecionadas.length === 0
+            ? 'Nenhuma operação selecionada'
+            : operacoesSelecionadas.length === 1
+                ? '1 operação selecionada'
+                : `${operacoesSelecionadas.length} operações selecionadas`
 
     if (!isOpen) return null
 
@@ -293,40 +321,91 @@ const ModalEditarFuncionario = ({ isOpen, onClose, onSave, funcionarioEditando, 
                             </div>
                         </div>
 
-                        {/* Turnos */}
-                        <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="p-1.5 bg-purple-100 rounded-lg">
-                                    <i className="bi bi-clock text-purple-600"></i>
+                        <div className="space-y-4">
+                            <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="p-1.5 bg-purple-100 rounded-lg">
+                                        <i className="bi bi-clock text-purple-600"></i>
+                                    </div>
+                                    <h4 className="text-base font-semibold text-gray-800">Turnos <span className="text-red-500">*</span></h4>
                                 </div>
-                                <h4 className="text-base font-semibold text-gray-800">Turnos <span className="text-red-500">*</span></h4>
+                                {turnosDisponiveis.length > 0 ? (
+                                    <div className="flex flex-wrap gap-4 px-4 py-2.5 border border-gray-300 rounded-lg bg-white min-h-11.5">
+                                        {turnosDisponiveis.map((turno) => (
+                                            <label key={turno.id} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={turnosSelecionados.includes(turno.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setTurnosSelecionados([...turnosSelecionados, turno.id])
+                                                        } else {
+                                                            setTurnosSelecionados(turnosSelecionados.filter(id => id !== turno.id))
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                />
+                                                <span className="text-sm text-gray-700 capitalize">{turno.nome}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50">
+                                        Nenhum turno disponível.
+                                    </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1.5">Selecione um ou mais turnos de trabalho do funcionário</p>
                             </div>
-                            {turnosDisponiveis.length > 0 ? (
-                                <div className="flex gap-4 px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
-                                    {turnosDisponiveis.map((turno) => (
-                                        <label key={turno.id} className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={turnosSelecionados.includes(turno.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setTurnosSelecionados([...turnosSelecionados, turno.id])
-                                                    } else {
-                                                        setTurnosSelecionados(turnosSelecionados.filter(id => id !== turno.id))
-                                                    }
-                                                }}
-                                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-gray-700 capitalize">{turno.nome}</span>
-                                        </label>
-                                    ))}
+
+                            <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200" ref={operacoesDropdownRef}>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="p-1.5 bg-green-100 rounded-lg">
+                                        <i className="bi bi-gear text-green-600"></i>
+                                    </div>
+                                    <h4 className="text-base font-semibold text-gray-800">Operações habilitadas</h4>
                                 </div>
-                            ) : (
-                                <p className="text-sm text-gray-500 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50">
-                                    Nenhum turno disponível.
-                                </p>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1.5">Selecione um ou mais turnos de trabalho do funcionário</p>
+                                {operacoesDisponiveis.length > 0 ? (
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDropdownOperacoesAberto((valorAtual) => !valorAtual)}
+                                            className="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-left text-sm text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <span className="truncate">{resumoOperacoesSelecionadas}</span>
+                                            <i className={`bi ${dropdownOperacoesAberto ? 'bi-chevron-up' : 'bi-chevron-down'} ml-3`}></i>
+                                        </button>
+
+                                        {dropdownOperacoesAberto && (
+                                            <div className="absolute right-0 z-20 mt-2 w-full min-w-[320px] rounded-lg border border-gray-200 bg-white shadow-lg">
+                                                <div className="max-h-56 overflow-y-auto space-y-2 px-4 py-3">
+                                                    {operacoesDisponiveis.map((operacao) => (
+                                                        <label key={operacao.id} className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={operacoesSelecionadas.includes(operacao.id)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setOperacoesSelecionadas([...operacoesSelecionadas, operacao.id])
+                                                                    } else {
+                                                                        setOperacoesSelecionadas(operacoesSelecionadas.filter(id => id !== operacao.id))
+                                                                    }
+                                                                }}
+                                                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-sm text-gray-700">{operacao.nome}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50">
+                                        Nenhuma operação disponível.
+                                    </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1.5">Defina em quais operações este funcionário está habilitado.</p>
+                            </div>
                         </div>
                     </div>
                 </form>

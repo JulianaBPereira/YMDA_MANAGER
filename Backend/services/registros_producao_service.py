@@ -1,6 +1,8 @@
 from datetime import date, time
 from typing import Optional
 from ..DAO.RegistroProducao_dao import RegistroProducaoDAO
+from ..Model.Funcionarios import Funcionario
+from ..Model.Operacoes import Operacao
 from ..Model.RegistroProdução import RegistroProducao
 
 
@@ -50,6 +52,25 @@ class RegistroProducaoService:
 	) -> RegistroProducao:
 		if funcionario_id <= 0 or operacao_id <= 0:
 			raise ValueError("funcionario_id e operacao_id devem ser positivos.")
+
+		funcionario = (
+			self.dao.db.query(Funcionario)
+			.filter(Funcionario.id == funcionario_id)
+			.first()
+		)
+		if not funcionario:
+			raise ValueError("Funcionário não encontrado.")
+		if not funcionario.ativo:
+			raise ValueError("Funcionário inativo não pode iniciar registros de produção.")
+
+		operacao = self.dao.db.query(Operacao).filter(Operacao.id == operacao_id).first()
+		if not operacao:
+			raise ValueError("Operação não encontrada.")
+
+		operacoes_habilitadas = {op.id for op in getattr(funcionario, "operacoes", [])}
+		if operacao_id not in operacoes_habilitadas:
+			raise ValueError("Funcionário não está habilitado para esta operação.")
+
 		return self.dao.criar(
 			funcionario_id=funcionario_id,
 			operacao_id=operacao_id,

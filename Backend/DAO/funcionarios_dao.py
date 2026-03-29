@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 from ..Model.Funcionarios import Funcionario, Turnos, FuncionarioTurnos
+from ..Model.Operacoes import Operacao
 
 
 class FuncionariosDAO:
@@ -17,7 +18,7 @@ class FuncionariosDAO:
         )
 
     def criar_funcionario(self, tag: str, matricula: str, nome: str,
-                          tag_temporaria: str, ativo: bool, turno_ids: list[int]):
+                          tag_temporaria: str, ativo: bool, turno_ids: list[int], operacao_ids: list[int]):
         # Validação de duplicidade: Tag e Matrícula devem ser únicas
         existente = (
             self.db.query(Funcionario)
@@ -36,14 +37,16 @@ class FuncionariosDAO:
             data_criacao=datetime.utcnow()
         )
         turnos = self.db.query(Turnos).filter(Turnos.id.in_(turno_ids)).all()
+        operacoes = self.db.query(Operacao).filter(Operacao.id.in_(operacao_ids)).all() if operacao_ids else []
         novo.turnos = turnos
+        novo.operacoes = operacoes
         self.db.add(novo)
         self.db.commit()
         self.db.refresh(novo)
         return novo
 
     def atualizar_funcionario(self, funcionario_id: int, tag: str, matricula: str,
-                               nome: str, tag_temporaria: str, ativo: bool, turno_ids: list[int]):
+                               nome: str, tag_temporaria: str, ativo: bool, turno_ids: list[int], operacao_ids: list[int]):
         funcionario = self.db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
         if not funcionario:
             return None
@@ -66,7 +69,9 @@ class FuncionariosDAO:
         funcionario.ativo = ativo
 
         turnos = self.db.query(Turnos).filter(Turnos.id.in_(turno_ids)).all()
+        operacoes = self.db.query(Operacao).filter(Operacao.id.in_(operacao_ids)).all() if operacao_ids else []
         funcionario.turnos = turnos
+        funcionario.operacoes = operacoes
 
         self.db.commit()
         self.db.refresh(funcionario)
@@ -79,12 +84,17 @@ class FuncionariosDAO:
             self.db.commit()
 
     def buscar_por_id(self, funcionario_id: int):
-        return self.db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
+        return (
+            self.db.query(Funcionario)
+            .options(joinedload(Funcionario.turnos), joinedload(Funcionario.operacoes))
+            .filter(Funcionario.id == funcionario_id)
+            .first()
+        )
 
     def listar(self):
         return (
             self.db.query(Funcionario)
-            .options(joinedload(Funcionario.turnos))
+            .options(joinedload(Funcionario.turnos), joinedload(Funcionario.operacoes))
             .all()
         )
 

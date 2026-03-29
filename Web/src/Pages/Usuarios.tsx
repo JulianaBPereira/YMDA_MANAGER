@@ -12,7 +12,7 @@ interface Usuario {
     id: number
     username: string
     nome: string
-    role: 'admin' | 'master'
+    role: 'admin' | 'master' | 'operador'
     ativo: boolean
     data_criacao?: string
 }
@@ -22,7 +22,7 @@ const Usuarios = () => {
     const [username, setUsername] = useState('')
     const [nome, setNome] = useState('')
     const [senha, setSenha] = useState('')
-    const [role, setRole] = useState<'admin' | 'master'>('admin')
+    const [role, setRole] = useState<'admin' | 'master' | 'operador'>('admin')
     const [ativo, setAtivo] = useState(true)
     const [usuarios, setUsuarios] = useState<Usuario[]>([])
     const [carregando, setCarregando] = useState(false)
@@ -221,7 +221,8 @@ const Usuarios = () => {
     const getRoleLabel = (role: string) => {
         const labels: { [key: string]: string } = {
             'admin': 'Administrador',
-            'master': 'Master'
+            'master': 'Master',
+            'operador': 'Operador'
         }
         return labels[role] || role
     }
@@ -229,7 +230,8 @@ const Usuarios = () => {
     const getRoleColor = (role: string) => {
         const colors: { [key: string]: string } = {
             'admin': 'bg-blue-100 text-blue-800',
-            'master': 'bg-purple-100 text-purple-800'
+            'master': 'bg-purple-100 text-purple-800',
+            'operador': 'bg-green-100 text-green-800'
         }
         return colors[role] || 'bg-gray-100 text-gray-800'
     }
@@ -321,10 +323,11 @@ const Usuarios = () => {
                                                 <select
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                     value={role}
-                                                    onChange={(e) => setRole(e.target.value as 'admin' | 'master')}
+                                                    onChange={(e) => setRole(e.target.value as 'admin' | 'master' | 'operador')}
                                                 >
                                                     <option value="admin">Administrador</option>
                                                     <option value="master">Master</option>
+                                                    <option value="operador">Operador</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -439,6 +442,7 @@ const Usuarios = () => {
                                                             <option value="">Todos</option>
                                                             <option value="admin">Administrador</option>
                                                             <option value="master">Master</option>
+                                                            <option value="operador">Operador</option>
                                                         </select>
                                                     </div>
                                                 </div>
