@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import TopBar from '../Components/topBar/TopBar'
 import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
@@ -20,13 +20,16 @@ interface Peca {
     produto_id?: number
 }
 
+let pecasCache: Peca[] | null = null
+
 const ListagemPecas = () => {
-    const [pecas, setPecas] = useState<Peca[]>([])
+    const [pecas, setPecas] = useState<Peca[]>(() => pecasCache ?? [])
     const [filtroCodigo, setFiltroCodigo] = useState('')
     const [filtroProduto, setFiltroProduto] = useState('')
     const [filtroModelo, setFiltroModelo] = useState('')
     const [paginaAtual, setPaginaAtual] = useState(1)
     const [erro, setErro] = useState<string | null>(null)
+    const [carregando, setCarregando] = useState(() => pecasCache === null)
     const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false)
     const [pecaEditando, setPecaEditando] = useState<Peca | null>(null)
     const [modalConfirmacao, setModalConfirmacao] = useState(false)
@@ -35,15 +38,19 @@ const ListagemPecas = () => {
     const [mensagemErroDuplicado, setMensagemErroDuplicado] = useState('')
     const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
     const [mensagemSucesso, setMensagemSucesso] = useState('')
+    const carregamentoInicialExecutadoRef = useRef(false)
 
     const itensPorPagina = 10
 
     useEffect(() => {
+        if (carregamentoInicialExecutadoRef.current) return
+        carregamentoInicialExecutadoRef.current = true
         carregarDados()
     }, [])
 
     const carregarDados = async () => {
         try {
+            setCarregando(pecasCache === null)
             setErro(null)
 
             const [pecasResp, modelosResp, produtosResp] = await Promise.all([
@@ -73,9 +80,12 @@ const ListagemPecas = () => {
 
             pecasMapeadas.sort((a, b) => b.id - a.id)
 
+            pecasCache = pecasMapeadas
             setPecas(pecasMapeadas)
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao carregar dados')
+        } finally {
+            setCarregando(false)
         }
     }
 
@@ -253,34 +263,36 @@ const ListagemPecas = () => {
                                 </div>
                             )}
 
-                            {pecasFiltradas.length === 0 ? (
+                            <>
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <div className="p-12 flex flex-col items-center justify-center">
-                                        <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
-                                        <p className="text-gray-500 text-lg font-medium">
-                                            {temFiltros
-                                                ? 'Nenhuma peça encontrada com os filtros aplicados'
-                                                : 'Nenhuma peça cadastrada'}
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full">
-                                                <thead>
-                                                    <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Código</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nome da Peça</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelo</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data</th>
-                                                        <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Código</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nome da Peça</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelo</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data</th>
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {!carregando && pecasPaginaAtual.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={6} className="px-6 py-12 text-center">
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                                <p className="text-gray-500 text-lg font-medium">
+                                                                    {temFiltros
+                                                                        ? 'Nenhuma peça encontrada com os filtros aplicados'
+                                                                        : 'Nenhuma peça cadastrada'}
+                                                                </p>
+                                                            </div>
+                                                        </td>
                                                     </tr>
-                                                </thead>
-                                                <tbody className="bg-white divide-y divide-gray-200">
-                                                    {pecasPaginaAtual.map((peca) => (
+                                                ) : (
+                                                    pecasPaginaAtual.map((peca) => (
                                                         <tr key={peca.id} className="hover:bg-gray-50">
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="text-sm font-medium text-gray-900">{peca.codigo}</div>
@@ -316,22 +328,22 @@ const ListagemPecas = () => {
                                                                 </div>
                                                             </td>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
+                                </div>
 
-                                    {pecasFiltradas.length > itensPorPagina && (
-                                        <Paginacao
-                                            totalItens={pecasFiltradas.length}
-                                            itensPorPagina={itensPorPagina}
-                                            paginaAtual={paginaAtual}
-                                            onPageChange={setPaginaAtual}
-                                        />
-                                    )}
-                                </>
-                            )}
+                                {!carregando && pecasFiltradas.length > itensPorPagina && (
+                                    <Paginacao
+                                        totalItens={pecasFiltradas.length}
+                                        itensPorPagina={itensPorPagina}
+                                        paginaAtual={paginaAtual}
+                                        onPageChange={setPaginaAtual}
+                                    />
+                                )}
+                            </>
                         </div>
                     </div>
                 </div>

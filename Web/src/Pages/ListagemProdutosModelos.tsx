@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import TopBar from '../Components/topBar/TopBar'
 import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
@@ -24,14 +24,17 @@ interface Produto {
     modelos?: Modelo[]
 }
 
+let produtosCache: Produto[] | null = null
+let modelosCache: Modelo[] | null = null
+
 const ListagemProdutosModelos = () => {
-    const [produtos, setProdutos] = useState<Produto[]>([])
-    const [modelos, setModelos] = useState<Modelo[]>([])
+    const [produtos, setProdutos] = useState<Produto[]>(() => produtosCache ?? [])
+    const [modelos, setModelos] = useState<Modelo[]>(() => modelosCache ?? [])
     const [filtroProduto, setFiltroProduto] = useState('')
     const [filtroModelo, setFiltroModelo] = useState('')
     const [paginaAtual, setPaginaAtual] = useState(1)
     const [erro, setErro] = useState<string | null>(null)
-    const [carregando, setCarregando] = useState(true)
+    const [carregando, setCarregando] = useState(() => produtosCache === null || modelosCache === null)
     const [modalEdicaoProdutoAberto, setModalEdicaoProdutoAberto] = useState(false)
     const [produtoEditando, setProdutoEditando] = useState<Produto | null>(null)
     const [modalEdicaoModeloAberto, setModalEdicaoModeloAberto] = useState(false)
@@ -43,16 +46,19 @@ const ListagemProdutosModelos = () => {
     const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
     const [mensagemSucesso, setMensagemSucesso] = useState('')
     const [produtoExpandido, setProdutoExpandido] = useState<number | null>(null)
+    const carregamentoInicialExecutadoRef = useRef(false)
 
     const itensPorPagina = 10
 
     useEffect(() => {
+        if (carregamentoInicialExecutadoRef.current) return
+        carregamentoInicialExecutadoRef.current = true
         carregarDados()
     }, [])
 
     const carregarDados = async () => {
         try {
-            setCarregando(true)
+            setCarregando(produtosCache === null || modelosCache === null)
             setErro(null)
 
             const [produtosResp, modelosResp] = await Promise.all([
@@ -76,6 +82,8 @@ const ListagemProdutosModelos = () => {
                 modelos: modelosPorProduto.get(p.id) ?? [],
             }))
 
+            produtosCache = produtosComModelos
+            modelosCache = modelosResp as Modelo[]
             setProdutos(produtosComModelos)
             setModelos(modelosResp as Modelo[])
         } catch (err) {
@@ -342,40 +350,35 @@ const ListagemProdutosModelos = () => {
                                 </div>
                             )}
 
-                            {carregando ? (
+                            <>
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <div className="p-12 flex flex-col items-center justify-center">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                                        <p className="text-gray-500 text-lg font-medium">Carregando produtos e modelos...</p>
-                                    </div>
-                                </div>
-                            ) : produtosFiltrados.length === 0 ? (
-                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <div className="p-12 flex flex-col items-center justify-center">
-                                        <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
-                                        <p className="text-gray-500 text-lg font-medium">
-                                            {temFiltros 
-                                                ? 'Nenhum produto encontrado com os filtros aplicados'
-                                                : 'Nenhum produto cadastrado'}
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full">
-                                                <thead>
-                                                    <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-8"></th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelos</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data</th>
-                                                        <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-8"></th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelos</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data</th>
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {!carregando && produtosPaginaAtual.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={5} className="px-6 py-12 text-center">
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                                <p className="text-gray-500 text-lg font-medium">
+                                                                    {temFiltros 
+                                                                        ? 'Nenhum produto encontrado com os filtros aplicados'
+                                                                        : 'Nenhum produto cadastrado'}
+                                                                </p>
+                                                            </div>
+                                                        </td>
                                                     </tr>
-                                                </thead>
-                                                <tbody className="bg-white divide-y divide-gray-200">
-                                                    {produtosPaginaAtual.map((produto) => (
+                                                ) : (
+                                                    produtosPaginaAtual.map((produto) => (
                                                         <>
                                                             <tr key={produto.id} className="hover:bg-gray-50">
                                                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -454,22 +457,22 @@ const ListagemProdutosModelos = () => {
                                                                 </tr>
                                                             )}
                                                         </>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    
-                                    {produtosFiltrados.length > itensPorPagina && (
-                                        <Paginacao
-                                            totalItens={produtosFiltrados.length}
-                                            itensPorPagina={itensPorPagina}
-                                            paginaAtual={paginaAtual}
-                                            onPageChange={setPaginaAtual}
-                                        />
-                                    )}
-                                </>
-                            )}
+                                </div>
+                                
+                                {!carregando && produtosFiltrados.length > itensPorPagina && (
+                                    <Paginacao
+                                        totalItens={produtosFiltrados.length}
+                                        itensPorPagina={itensPorPagina}
+                                        paginaAtual={paginaAtual}
+                                        onPageChange={setPaginaAtual}
+                                    />
+                                )}
+                            </>
                         </div>
                     </div>
                 </div>

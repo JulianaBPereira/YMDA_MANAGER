@@ -30,6 +30,7 @@ const Funcionarios = () => {
     const [turnosDisponiveis, setTurnosDisponiveis] = useState<Turno[]>([])
     const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
     const [carregando, setCarregando] = useState(false)
+    const [carregandoTurnos, setCarregandoTurnos] = useState(true)
     const [modalEditarAberto, setModalEditarAberto] = useState(false)
     const [modalExcluirAberto, setModalExcluirAberto] = useState(false)
     const [modalStatusAberto, setModalStatusAberto] = useState(false)
@@ -44,6 +45,7 @@ const Funcionarios = () => {
     const [filtroMatricula, setFiltroMatricula] = useState('')
     const [filtroNome, setFiltroNome] = useState('')
     const rfidInputRef = useRef<HTMLInputElement>(null)
+    const carregamentoInicialExecutadoRef = useRef(false)
 
     const fecharModal = () => {
         setModalEditarAberto(false)
@@ -70,16 +72,14 @@ const Funcionarios = () => {
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [])
 
-    // Carrega funcionários (e aproveita para extrair turnos disponíveis)
     const carregarFuncionarios = async () => {
         setCarregando(true)
+        setCarregandoTurnos(true)
         try {
-            // 1) Tenta carregar turnos por endpoint dedicado (se o backend fornecer)
             let turnosApi = await listarTurnos()
             if (turnosApi.length > 0) {
                 setTurnosDisponiveis(turnosApi.sort((a, b) => a.id - b.id))
             } else {
-                // 1.b) Se não houver nenhum turno, cria os turnos padrão automaticamente
                 turnosApi = await garantirTurnosPadrao()
                 if (turnosApi.length > 0) {
                     setTurnosDisponiveis(turnosApi.sort((a, b) => a.id - b.id))
@@ -94,12 +94,11 @@ const Funcionarios = () => {
                     if (!mapa.has(t.id)) mapa.set(t.id, t)
                 }
             }
-            // 2) Fallback: se não veio nada da API de turnos, extrai dos funcionários
+
             if (mapa.size > 0 && turnosApi.length === 0) {
                 setTurnosDisponiveis(Array.from(mapa.values()).sort((a, b) => a.id - b.id))
             }
 
-            // 3) Último recurso: se ainda não houver turnos, mostrar opções padrão no formulário
             if (turnosApi.length === 0 && mapa.size === 0) {
                 setTurnosDisponiveis([
                     { id: 1, nome: 'Matutino' },
@@ -112,12 +111,15 @@ const Funcionarios = () => {
             setFuncionarios([])
         } finally {
             setCarregando(false)
+            setCarregandoTurnos(false)
         }
     }
 
-    // Carrega no mount (para ter turnos disponíveis no formulário) e ao entrar na aba listar
-    useEffect(() => { carregarFuncionarios() }, [])
-    useEffect(() => { if (abaAtiva === 'listar') carregarFuncionarios() }, [abaAtiva])
+    useEffect(() => {
+        if (carregamentoInicialExecutadoRef.current) return
+        carregamentoInicialExecutadoRef.current = true
+        carregarFuncionarios()
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -306,7 +308,11 @@ const Funcionarios = () => {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Turnos <span className="text-red-500">*</span>
                                             </label>
-                                            {turnosDisponiveis.length > 0 ? (
+                                            {carregandoTurnos ? (
+                                                <p className="text-sm text-gray-500 px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                                                    Carregando turnos...
+                                                </p>
+                                            ) : turnosDisponiveis.length > 0 ? (
                                                 <div className="flex gap-4 px-3 py-2 border border-gray-300 rounded-md bg-white">
                                                     {turnosDisponiveis.map((turno) => (
                                                         <label key={turno.id} className="flex items-center gap-2 cursor-pointer">
@@ -431,7 +437,7 @@ const Funcionarios = () => {
                                             </div>
                                         </div>
                                     )}
-                                        {carregando ? (
+                                        {carregando && funcionarios.length === 0 ? (
                                             <div className="flex justify-center items-center py-12">
                                                 <p className="text-gray-500">Carregando funcionários...</p>
                                             </div>
