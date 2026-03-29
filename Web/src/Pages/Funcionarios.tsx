@@ -11,6 +11,8 @@ import {
     type Turno,
     type AtualizarFuncionarioData,
     listarFuncionarios,
+    listarTurnos,
+    garantirTurnosPadrao,
     criarFuncionario,
     atualizarFuncionario,
     deletarFuncionario,
@@ -69,6 +71,18 @@ const Funcionarios = () => {
     const carregarFuncionarios = async () => {
         setCarregando(true)
         try {
+            // 1) Tenta carregar turnos por endpoint dedicado (se o backend fornecer)
+            let turnosApi = await listarTurnos()
+            if (turnosApi.length > 0) {
+                setTurnosDisponiveis(turnosApi.sort((a, b) => a.id - b.id))
+            } else {
+                // 1.b) Se não houver nenhum turno, cria os turnos padrão automaticamente
+                turnosApi = await garantirTurnosPadrao()
+                if (turnosApi.length > 0) {
+                    setTurnosDisponiveis(turnosApi.sort((a, b) => a.id - b.id))
+                }
+            }
+
             const dados = await listarFuncionarios()
             setFuncionarios(dados)
             const mapa = new Map<number, Turno>()
@@ -77,8 +91,18 @@ const Funcionarios = () => {
                     if (!mapa.has(t.id)) mapa.set(t.id, t)
                 }
             }
-            if (mapa.size > 0) {
+            // 2) Fallback: se não veio nada da API de turnos, extrai dos funcionários
+            if (mapa.size > 0 && turnosApi.length === 0) {
                 setTurnosDisponiveis(Array.from(mapa.values()).sort((a, b) => a.id - b.id))
+            }
+
+            // 3) Último recurso: se ainda não houver turnos, mostrar opções padrão no formulário
+            if (turnosApi.length === 0 && mapa.size === 0) {
+                setTurnosDisponiveis([
+                    { id: 1, nome: 'Matutino' },
+                    { id: 2, nome: 'Vespertino' },
+                    { id: 3, nome: 'Noturno' },
+                ])
             }
         } catch (error: any) {
             mostrarErro('Erro!', `Erro ao carregar funcionários: ${error?.message || 'Erro desconhecido'}`)
@@ -97,8 +121,28 @@ const Funcionarios = () => {
         if (!tag.trim()) return mostrarErro('Atenção!', 'A Tag RFID é obrigatória.')
         if (turnosSelecionados.length === 0) return mostrarErro('Atenção!', 'Selecione pelo menos um turno.')
 
+        // Validação simples no cliente para evitar duplicidade imediata
+        const tagNormalizada = tag.trim()
+        const jaExiste = funcionarios.some(f => f.tag === tagNormalizada || f.matricula === matricula)
+        if (jaExiste) {
+            return mostrarErro('Atenção!', 'Já existe um funcionário com a mesma Tag ou Matrícula.')
+        }
+
         try {
-            await criarFuncionario({ tag: tag.trim(), matricula, nome, ativo, turno_ids: turnosSelecionados })
+            const criado = await criarFuncionario({ tag: tagNormalizada, matricula, nome, ativo, turno_ids: turnosSelecionados })
+
+            // Workaround: alguns backends podem ignorar turno_ids no POST.
+            // Se voltar sem turnos, tentamos atualizar em seguida para garantir a associação.
+            if (Array.isArray(criado?.turnos) ? criado.turnos.length === 0 : true) {
+                await atualizarFuncionario(criado.id, {
+                    tag: tagNormalizada,
+                    matricula,
+                    nome,
+                    ativo,
+                    turno_ids: turnosSelecionados,
+                })
+            }
+
             setMatricula(''); setNome(''); setTag(''); setAtivo(true); setTurnosSelecionados([])
             if (abaAtiva === 'listar') await carregarFuncionarios()
             setTimeout(() => rfidInputRef.current?.focus(), 100)
@@ -284,59 +328,101 @@ const Funcionarios = () => {
                                     </form>
                                 ) : (
                                     <div>
-                                        {!carregando && (funcionarios.length > 0 ? (
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full">
-                                                    <thead className="bg-gray-50">
-                                                        <tr>
-                                                            {['Matrícula', 'Nome', 'Tag RFID', 'Status', 'Turno', 'Ações'].map(col => (
-                                                                <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{col}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {funcionariosPaginaAtual.map((funcionario) => (
-                                                            <tr key={funcionario.id} className="hover:bg-gray-50">
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{funcionario.matricula}</td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{funcionario.nome}</td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{funcionario.tag || '-'}</td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${funcionario.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                                        {funcionario.ativo ? 'Ativo' : 'Inativo'}
+                                        {/* Cabeçalho e lista no mesmo layout de Postos */}
+                                        {carregando ? (
+                                            <div className="flex justify-center items-center py-12">
+                                                <p className="text-gray-500">Carregando funcionários...</p>
+                                            </div>
+                                        ) : funcionarios.length > 0 ? (
+                                            <div className="space-y-3">
+                                                <div className="px-4 py-2 bg-blue-50 rounded-md mb-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="w-8" />
+                                                        <div className="grid grid-cols-5 items-center w-full gap-4">
+                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide col-span-1">
+                                                                Funcionário
+                                                            </span>
+                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
+                                                                Matrícula
+                                                            </span>
+                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
+                                                                Turno
+                                                            </span>
+                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
+                                                                RFID
+                                                            </span>
+                                                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-16 col-span-1">
+                                                                Data Criação
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-24" />
+                                                    </div>
+                                                </div>
+
+                                                {funcionariosPaginaAtual.map((funcionario) => (
+                                                    <div key={funcionario.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 hover:bg-gray-50 transition-colors">
+                                                        <div className="flex items-center gap-3 w-full">
+                                                            <span className="w-8 text-gray-400">
+                                                                <i className="bi bi-person-fill"></i>
+                                                            </span>
+                                                            <div className="grid grid-cols-5 items-center w-full gap-4">
+                                                                <div className="col-span-1">
+                                                                    <span className="text-sm font-medium text-gray-900">{funcionario.nome}</span>
+                                                                </div>
+                                                                <div className="col-span-1 text-center">
+                                                                    <span className="text-sm text-gray-700">{funcionario.matricula}</span>
+                                                                </div>
+                                                                <div className="col-span-1 text-center">
+                                                                    <span className="text-sm text-gray-700">
+                                                                        {funcionario.turnos && funcionario.turnos.length > 0
+                                                                            ? funcionario.turnos.map(t => t.nome).join(', ')
+                                                                            : 'Não definido'}
                                                                     </span>
-                                                                </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                                    {funcionario.turnos.length > 0 ? (
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {funcionario.turnos.map((t) => (
-                                                                                <span key={t.id} className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 capitalize">
-                                                                                    {t.nome}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Não definido</span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button onClick={() => { setFuncionarioSelecionado(funcionario); setModalEditarAberto(true) }} className="p-2 rounded hover:opacity-80" style={{ color: 'var(--bg-azul)' }} title="Editar">
-                                                                            <i className="bi bi-pencil-square"></i>
-                                                                        </button>
-                                                                        <button onClick={() => { setFuncionarioSelecionado(funcionario); setModalStatusAberto(true) }} className={`p-2 rounded hover:opacity-80 ${funcionario.ativo ? 'text-orange-600' : 'text-green-600'}`} title={funcionario.ativo ? 'Desativar' : 'Ativar'}>
-                                                                            <i className={`bi ${funcionario.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
-                                                                        </button>
-                                                                        <button onClick={() => { setFuncionarioSelecionado(funcionario); setModalExcluirAberto(true) }} className="p-2 rounded text-red-600 hover:text-red-800 hover:bg-red-50" title="Excluir">
-                                                                            <i className="bi bi-trash"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                                                </div>
+                                                                <div className="col-span-1 text-center">
+                                                                    <span className="text-sm text-gray-700">{funcionario.tag || '-'}</span>
+                                                                </div>
+                                                                <div className="col-span-1 text-right pr-16">
+                                                                    <span className="text-sm text-gray-500">
+                                                                        {funcionario.data_criacao ? new Date(funcionario.data_criacao).toLocaleDateString('pt-BR') : '-'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 w-24 justify-end">
+                                                            <button
+                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalEditarAberto(true) }}
+                                                                className="p-2 rounded transition-colors hover:opacity-80"
+                                                                style={{ color: 'var(--bg-azul)' }}
+                                                                title="Editar funcionário"
+                                                            >
+                                                                <i className="bi bi-pencil"></i>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalStatusAberto(true) }}
+                                                                className={`p-2 rounded transition-colors hover:opacity-80 ${funcionario.ativo ? 'text-orange-600' : 'text-green-600'}`}
+                                                                title={funcionario.ativo ? 'Desativar' : 'Ativar'}
+                                                            >
+                                                                <i className={`bi ${funcionario.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setFuncionarioSelecionado(funcionario); setModalExcluirAberto(true) }}
+                                                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
+                                                                title="Excluir funcionário"
+                                                            >
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+
                                                 {funcionarios.length > itensPorPagina && (
-                                                    <Paginacao totalItens={funcionarios.length} itensPorPagina={itensPorPagina} paginaAtual={paginaAtual} onPageChange={setPaginaAtual} />
+                                                    <Paginacao
+                                                        totalItens={funcionarios.length}
+                                                        itensPorPagina={itensPorPagina}
+                                                        paginaAtual={paginaAtual}
+                                                        onPageChange={setPaginaAtual}
+                                                    />
                                                 )}
                                             </div>
                                         ) : (
@@ -344,7 +430,7 @@ const Funcionarios = () => {
                                                 <i className="bi bi-info-circle text-gray-300 text-5xl mb-4"></i>
                                                 <p className="text-gray-500 text-lg font-medium">Nenhum funcionário cadastrado</p>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -369,26 +455,20 @@ const Funcionarios = () => {
                 mensagem="Tem certeza que deseja excluir este funcionário?"
                 textoConfirmar="Excluir"
                 textoCancelar="Cancelar"
-                corHeader="laranja"
+                corHeader="vermelho"
             />
 
             <ModalConfirmacao
                 isOpen={modalStatusAberto}
                 onClose={fecharModal}
                 onConfirm={handleConfirmarMudancaStatus}
-                titulo="Alterar Status"
-                mensagem="Deseja alterar o status deste funcionário?"
+                titulo={funcionarioSelecionado?.ativo ? 'Desativar' : 'Ativar'}
+                mensagem={funcionarioSelecionado?.ativo ? 'Deseja desativar esse funcionário?' : 'Deseja ativar esse funcionário?'}
                 textoConfirmar="Confirmar"
                 textoCancelar="Cancelar"
-                corHeader={funcionarioSelecionado?.ativo ? 'laranja' : 'azul'}
-                item={funcionarioSelecionado ? {
-                    matricula: funcionarioSelecionado.matricula,
-                    nome: funcionarioSelecionado.nome,
-                    status: funcionarioSelecionado.ativo ? 'Ativo' : 'Inativo',
-                    novoStatus: funcionarioSelecionado.ativo ? 'Inativo' : 'Ativo'
-                } : undefined}
-                camposItem={['matricula', 'nome']}
-                mostrarDetalhes={true}
+                corHeader={funcionarioSelecionado?.ativo ? 'vermelho' : 'verde'}
+                item={undefined}
+                mostrarDetalhes={false}
             />
 
             <ModalSucesso
