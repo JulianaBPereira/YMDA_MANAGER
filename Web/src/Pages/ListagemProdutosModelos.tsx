@@ -4,6 +4,7 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
 import ModalFormulario from '../Components/Compartilhados/ModalFormulario'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
+import ModalSucesso from '../Components/Modais/ModalSucesso'
 import { listarProdutos, atualizarProduto, deletarProduto, type Produto as ProdutoApi } from '../services/produtos'
 import { listarModelos, atualizarModelo, deletarModelo, type Modelo as ModeloApi } from '../services/modelos'
 
@@ -39,6 +40,8 @@ const ListagemProdutosModelos = () => {
     const [itemParaDeletar, setItemParaDeletar] = useState<{ tipo: 'produto' | 'modelo'; item: Produto | Modelo } | null>(null)
     const [modalErroDuplicado, setModalErroDuplicado] = useState(false)
     const [mensagemErroDuplicado, setMensagemErroDuplicado] = useState('')
+    const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
+    const [mensagemSucesso, setMensagemSucesso] = useState('')
     const [produtoExpandido, setProdutoExpandido] = useState<number | null>(null)
 
     const itensPorPagina = 10
@@ -166,6 +169,8 @@ const ListagemProdutosModelos = () => {
             setModalEdicaoProdutoAberto(false)
             setProdutoEditando(null)
             await carregarDados()
+            setMensagemSucesso('Produto editado com sucesso!')
+            setModalSucessoAberto(true)
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao salvar produto')
         }
@@ -192,8 +197,12 @@ const ListagemProdutosModelos = () => {
             }
 
             // Verificar se o nome já existe em outro modelo (ignorando o modelo atual)
+            const produtosAtivosIds = new Set(produtos.map((produto) => produto.id))
             const modeloExistente = modelos.find(m => 
-                m.nome.toLowerCase() === nomeModelo.toLowerCase() && m.id !== modeloEditando.id
+                m.nome.toLowerCase() === nomeModelo.toLowerCase() &&
+                m.id !== modeloEditando.id &&
+                m.produto_id !== undefined &&
+                produtosAtivosIds.has(m.produto_id)
             )
             
             if (modeloExistente) {
@@ -215,6 +224,8 @@ const ListagemProdutosModelos = () => {
             setModalEdicaoModeloAberto(false)
             setModeloEditando(null)
             await carregarDados()
+            setMensagemSucesso('Modelo editado com sucesso!')
+            setModalSucessoAberto(true)
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao salvar modelo')
         }
@@ -232,14 +243,25 @@ const ListagemProdutosModelos = () => {
 
     const handleConfirmarDeletar = async () => {
         if (!itemParaDeletar) return
-        if (itemParaDeletar.tipo === 'produto') {
-            await deletarProduto((itemParaDeletar.item as Produto).id)
-        } else {
-            await deletarModelo((itemParaDeletar.item as Modelo).id)
+
+        try {
+            setErro(null)
+
+            if (itemParaDeletar.tipo === 'produto') {
+                await deletarProduto((itemParaDeletar.item as Produto).id)
+                setMensagemSucesso('Produto deletado com sucesso!')
+            } else {
+                await deletarModelo((itemParaDeletar.item as Modelo).id)
+                setMensagemSucesso('Modelo deletado com sucesso!')
+            }
+
+            setModalSucessoAberto(true)
+            setModalConfirmacao(false)
+            setItemParaDeletar(null)
+            await carregarDados()
+        } catch (err) {
+            setErro(err instanceof Error ? err.message : 'Erro ao deletar item')
         }
-        setModalConfirmacao(false)
-        setItemParaDeletar(null)
-        await carregarDados()
     }
 
     const toggleExpandirProduto = (produtoId: number) => {
@@ -257,15 +279,6 @@ const ListagemProdutosModelos = () => {
                 <div className="flex-1 p-6 pt-32 pb-20 md:pb-24 md:pl-20 transition-all duration-300">
                     <div className="max-w-[95%] mx-auto">
                         <div className="flex flex-col gap-6">
-                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                <div className="text-white px-6 py-4" style={{ backgroundColor: 'var(--bg-azul)' }}>
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <i className="bi bi-box-seam"></i>
-                                        Listagem de Produtos e Modelos
-                                    </h3>
-                                </div>
-                            </div>
-
                             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
@@ -356,8 +369,8 @@ const ListagemProdutosModelos = () => {
                                                     <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
                                                         <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-8"></th>
                                                         <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data de Criação</th>
                                                         <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelos</th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data</th>
                                                         <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
                                                     </tr>
                                                 </thead>
@@ -377,12 +390,12 @@ const ListagemProdutosModelos = () => {
                                                                     <div className="text-sm font-medium text-gray-900">{produto.nome}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                                    <div className="text-sm text-gray-900">{formatarData(produto.data_criacao)}</div>
-                                                                </td>
-                                                                <td className="px-6 py-4 whitespace-nowrap">
                                                                     <div className="text-sm text-gray-900">
                                                                         {produto.modelos?.length || 0} modelo(s)
                                                                     </div>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="text-sm text-gray-900">{formatarData(produto.data_criacao)}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                                                     <div className="flex items-center justify-center gap-2">
@@ -407,25 +420,14 @@ const ListagemProdutosModelos = () => {
                                                                 <tr>
                                                                     <td colSpan={5} className="px-6 py-4 bg-gray-50">
                                                                         <div className="ml-8">
-                                                                            <h5 className="text-sm font-semibold text-gray-700 mb-2">Modelos do Produto:</h5>
                                                                             <table className="w-full">
-                                                                                <thead>
-                                                                                    <tr className="border-b border-gray-300">
-                                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Modelo</th>
-                                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Data de Criação</th>
-                                                                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Ações</th>
-                                                                                    </tr>
-                                                                                </thead>
                                                                                 <tbody>
                                                                                     {produto.modelos.map((modelo) => (
                                                                                         <tr key={modelo.id} className="border-b border-gray-200 hover:bg-gray-100">
-                                                                                            <td className="px-4 py-2">
+                                                                                            <td className="px-4 py-2 w-full">
                                                                                                 <div className="text-sm text-gray-900">{modelo.nome}</div>
                                                                                             </td>
-                                                                                            <td className="px-4 py-2">
-                                                                                                <div className="text-sm text-gray-900">{formatarData(modelo.data_criacao)}</div>
-                                                                                            </td>
-                                                                                            <td className="px-4 py-2 text-center">
+                                                                                            <td className="px-4 py-2 text-center whitespace-nowrap">
                                                                                                 <div className="flex items-center justify-center gap-2">
                                                                                                     <button
                                                                                                         onClick={() => handleEditarModelo(modelo)}
@@ -549,20 +551,12 @@ const ListagemProdutosModelos = () => {
                 titulo="Confirmar Exclusão"
                 mensagem={
                     itemParaDeletar?.tipo === 'produto'
-                        ? 'Tem certeza que deseja deletar este produto? Todos os modelos associados também serão deletados. Esta ação não pode ser desfeita.'
-                        : 'Tem certeza que deseja deletar este modelo? Esta ação não pode ser desfeita.'
+                        ? 'Tem certeza que deseja deletar este produto?'
+                        : 'Tem certeza que deseja deletar este modelo?'
                 }
                 textoConfirmar="Deletar"
                 textoCancelar="Cancelar"
                 corHeader="vermelho"
-                item={itemParaDeletar ? {
-                    nome: itemParaDeletar.tipo === 'produto' 
-                        ? (itemParaDeletar.item as Produto).nome
-                        : (itemParaDeletar.item as Modelo).nome,
-                    tipo: itemParaDeletar.tipo
-                } : undefined}
-                camposItem={['nome', 'tipo']}
-                mostrarDetalhes={true}
             />
 
             <ModalConfirmacao
@@ -580,6 +574,16 @@ const ListagemProdutosModelos = () => {
                 textoConfirmar="OK"
                 textoCancelar=""
                 corHeader="vermelho"
+            />
+
+            <ModalSucesso
+                isOpen={modalSucessoAberto}
+                onClose={() => {
+                    setModalSucessoAberto(false)
+                    setMensagemSucesso('')
+                }}
+                mensagem={mensagemSucesso}
+                titulo="Sucesso!"
             />
         </div>
     )

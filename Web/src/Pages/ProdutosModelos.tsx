@@ -76,14 +76,20 @@ const ProdutosModelos = () => {
     const nomeProdutoNormalizado = nomeProduto.trim().toLowerCase()
     const nomeModeloProdutoNovoNormalizado = nomeModeloProdutoNovo.trim().toLowerCase()
     const nomeModeloProdutoExistenteNormalizado = nomeModeloProdutoExistente.trim().toLowerCase()
+    const produtosAtivosIds = new Set(produtos.map((produto) => produto.id))
+    const modelosAtivos = modelos.filter(
+        (modelo) =>
+            modelo.produto_id !== undefined &&
+            produtosAtivosIds.has(modelo.produto_id)
+    )
 
     const produtoDuplicado = produtos.find(
         (produto) => produto.nome.trim().toLowerCase() === nomeProdutoNormalizado
     )
-    const modeloDuplicadoProdutoNovo = modelos.find(
+    const modeloDuplicadoProdutoNovo = modelosAtivos.find(
         (modelo) => modelo.nome.trim().toLowerCase() === nomeModeloProdutoNovoNormalizado
     )
-    const modeloDuplicadoProdutoExistente = modelos.find(
+    const modeloDuplicadoProdutoExistente = modelosAtivos.find(
         (modelo) =>
             modelo.nome.trim().toLowerCase() === nomeModeloProdutoExistenteNormalizado &&
             modelo.produto_id === Number(produtoSelecionadoProdutoExistente)
