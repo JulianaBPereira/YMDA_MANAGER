@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import TopBar from '../Components/topBar/TopBar'
 import MenuLateral from '../Components/MenuLateral/MenuLateral'
+import CardPosto from '../Components/Postos/CardPosto'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
@@ -144,25 +145,10 @@ const Postos = () => {
             return
         }
 
-        // Validação simples de duplicidade no cliente:
-        // sublinha + dispositivo devem ser únicos (independente do nome)
-        const nomeTrim = nome.trim()
-        const existeDuplicado = postos.some(p =>
-            p.sublinha_id === sublinhaId &&
-            p.toten_id === (totenId || 0) &&
-            (!postoEditando || p.posto_id !== postoEditando.posto_id)
-        )
-        if (existeDuplicado) {
-            setTituloErro('Duplicado')
-            setMensagemErro('Já existe um posto para esta sublinha e dispositivo.')
-            setModalErroAberto(true)
-            return
-        }
-
         try {
             if (postoEditando) {
                 await atualizarPosto(postoEditando.posto_id, {
-                    nome: nomeTrim,
+                    nome: nome.trim(),
                     sublinha_id: sublinhaId,
                     dispositivo_id: totenId || undefined,
                 })
@@ -171,7 +157,7 @@ const Postos = () => {
                 setPostoEditando(null)
             } else {
                 await criarPosto({
-                    nome: nomeTrim,
+                    nome: nome.trim(),
                     sublinha_id: sublinhaId,
                     dispositivo_id: totenId || undefined,
                 })
@@ -358,8 +344,8 @@ const Postos = () => {
                                                 onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
                                                 onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                                             >
-                                                <i className={postoEditando ? 'bi bi-check-lg' : 'bi bi-plus-circle-fill'}></i>
-                                                <span>{postoEditando ? 'Salvar' : 'Cadastrar'}</span>
+                                                <i className="bi bi-geo-alt-fill"></i>
+                                                <span>{postoEditando ? 'Atualizar Posto' : 'Cadastrar Posto'}</span>
                                             </button>
                                             {postoEditando && (
                                                 <button
@@ -401,52 +387,19 @@ const Postos = () => {
                                                 <p className="text-gray-500">Carregando postos...</p>
                                             </div>
                                         ) : postos.length > 0 ? (
-                                            <div className="space-y-3">
+                                            <div className="space-y-4">
                                                 {postosPaginaAtual.map((posto) => {
                                                     const dispositivo = totens.find(t => t.id === posto.toten_id)
                                                     return (
-                                                        <div key={posto.posto_id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 hover:bg-gray-50 transition-colors">
-                                                            <div className="flex items-center gap-3 w-full">
-                                                                <span className="w-8 text-gray-400">
-                                                                    <i className="bi bi-geo-alt-fill"></i>
-                                                                </span>
-                                                                <div className="grid grid-cols-4 items-center w-full gap-4">
-                                                                    <div className="col-span-1">
-                                                                        <span className="text-sm font-medium text-gray-900">{posto.nome}</span>
-                                                                    </div>
-                                                                    <div className="col-span-1 text-center">
-                                                                        <span className="text-sm text-gray-700">{obterNomeSublinha(posto.sublinha_id)}</span>
-                                                                    </div>
-                                                                    <div className="col-span-1 text-center">
-                                                                        <span className="text-sm text-gray-700">
-                                                                            {dispositivo ? `${dispositivo.nome}${dispositivo.serial ? ` (${dispositivo.serial})` : ''}` : '-'}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="col-span-1 text-right pr-8">
-                                                                        <span className="text-sm text-gray-500">
-                                                                            {posto.data_criacao ? new Date(posto.data_criacao).toLocaleDateString('pt-BR') : '-'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 w-24 justify-end">
-                                                                <button
-                                                                    onClick={() => handleEditarPosto(posto)}
-                                                                    className="p-2 rounded transition-colors hover:opacity-80"
-                                                                    style={{ color: 'var(--bg-azul)' }}
-                                                                    title="Editar posto"
-                                                                >
-                                                                    <i className="bi bi-pencil"></i>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleExcluirPosto(posto)}
-                                                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
-                                                                    title="Excluir posto"
-                                                                >
-                                                                    <i className="bi bi-trash"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
+                                                        <CardPosto
+                                                            key={posto.posto_id}
+                                                            posto={posto}
+                                                            nomeSublinha={obterNomeSublinha(posto.sublinha_id)}
+                                                            dispositivoNome={dispositivo?.nome}
+                                                            dispositivoSerial={dispositivo?.serial}
+                                                            onRemoverPosto={() => handleExcluirPosto(posto)}
+                                                            onEditarPosto={() => handleEditarPosto(posto)}
+                                                        />
                                                     )
                                                 })}
                                                 {postos.length > itensPorPagina && (

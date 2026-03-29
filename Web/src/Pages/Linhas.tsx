@@ -5,7 +5,7 @@ import { Paginacao } from '../Components/Compartilhados/paginacao'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
-import { listarLinhas, atualizarLinha, deletarLinha, criarLinhaComSublinha } from '../services/linhas'
+import { listarLinhas, atualizarLinha, deletarLinha, atualizarSublinha, criarLinhaComSublinha } from '../services/linhas'
 
 
 interface Sublinha {
@@ -30,8 +30,7 @@ const Linhas = () => {
     
     // Estados para listagem
     const [linhas, setLinhas] = useState<Linha[]>([])
-    const [linhaEditando, setLinhaEditando] = useState<number | null>(null)
-    const [nomeLinhaEditando, setNomeLinhaEditando] = useState('')
+    // Estados antigos de edição inline removidos (edição agora ocorre via formulário)
     const [paginaAtual, setPaginaAtual] = useState(1)
     const [itensPorPagina] = useState(10)
     const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
@@ -41,12 +40,21 @@ const Linhas = () => {
     const [tituloErro, setTituloErro] = useState('Erro!')
     const [modalConfirmacaoLinhaAberto, setModalConfirmacaoLinhaAberto] = useState(false)
     const [linhaIdParaExcluir, setLinhaIdParaExcluir] = useState<number | null>(null)
+    const [carregando, setCarregando] = useState(false)
+
+    // Estados para edição via aba "Cadastrar"
+    const [modoEdicao, setModoEdicao] = useState(false)
+    const [linhaIdEdicao, setLinhaIdEdicao] = useState<number | null>(null)
+    const [sublinhaIdEdicao, setSublinhaIdEdicao] = useState<number | null>(null)
+    const [nomeLinhaOriginal, setNomeLinhaOriginal] = useState('')
+    const [nomeSublinhaOriginal, setNomeSublinhaOriginal] = useState('')
 
     useEffect(() => {
         if (abaAtiva === 'listar') carregarLinhas()
     }, [abaAtiva])
 
-    const carregarLinhas = async () => {
+    const carregarLinhas = async (comLoader: boolean = true) => {
+        if (comLoader) setCarregando(true)
         try {
             const resp = await listarLinhas()
             const normalizadas: Linha[] = Array.isArray(resp)
@@ -63,12 +71,51 @@ const Linhas = () => {
             setMensagemErro(e?.message || 'Erro ao carregar linhas')
             setModalErroAberto(true)
             setLinhas([])
+        } finally {
+            if (comLoader) setCarregando(false)
         }
     }
 
     const handleCadastrarComposto = async (e: React.FormEvent) => {
         e.preventDefault()
         
+        if (modoEdicao) {
+            // Salvar edição (linha e/ou sublinha conforme alterado)
+            const desejaEditarLinha = linhaIdEdicao != null && nomeLinha.trim() && nomeLinha.trim() !== nomeLinhaOriginal.trim()
+            const desejaEditarSublinha = sublinhaIdEdicao != null && nomeSublinha.trim() && nomeSublinha.trim() !== nomeSublinhaOriginal.trim()
+
+            if (!desejaEditarLinha && !desejaEditarSublinha) {
+                setTituloErro('Atenção')
+                setMensagemErro('Nenhuma alteração detectada para salvar.')
+                setModalErroAberto(true)
+                return
+            }
+
+            try {
+                if (desejaEditarLinha && linhaIdEdicao != null) {
+                    await atualizarLinha(linhaIdEdicao, { nome: nomeLinha.trim() })
+                }
+                if (desejaEditarSublinha && sublinhaIdEdicao != null && linhaIdEdicao != null) {
+                    await atualizarSublinha(sublinhaIdEdicao, { nome: nomeSublinha.trim(), linha_id: linhaIdEdicao })
+                }
+                // Reset estado de edição e recarrega lista
+                setModoEdicao(false)
+                setLinhaIdEdicao(null)
+                setSublinhaIdEdicao(null)
+                setNomeLinhaOriginal('')
+                setNomeSublinhaOriginal('')
+                setNomeLinha('')
+                setNomeSublinha('')
+                setAbaAtiva('listar')
+                await carregarLinhas(false)
+            } catch (e: any) {
+                setTituloErro('Erro!')
+                setMensagemErro(e?.message || 'Erro ao salvar edição')
+                setModalErroAberto(true)
+            }
+            return
+        } else {
+            // Fluxo de criação composto
         if (!nomeLinha.trim() || !nomeSublinha.trim()) {
             setTituloErro('Erro!')
             setMensagemErro('Informe o nome da linha e da sublinha')
@@ -82,11 +129,12 @@ const Linhas = () => {
             setNomeSublinha('')
             setMensagemSucesso('Linha e sublinha criadas com sucesso!')
             setModalSucessoAberto(true)
-            if (abaAtiva === 'listar') await carregarLinhas()
+                if (abaAtiva === 'listar') await carregarLinhas(false)
         } catch (e: any) {
             setTituloErro('Erro!')
             setMensagemErro(e?.message || 'Erro ao criar linha e sublinha')
             setModalErroAberto(true)
+            }
         }
     }
 
@@ -102,7 +150,7 @@ const Linhas = () => {
             await deletarLinha(linhaIdParaExcluir)
             setModalConfirmacaoLinhaAberto(false)
             setLinhaIdParaExcluir(null)
-            await carregarLinhas()
+            await carregarLinhas(false)
             setMensagemSucesso('Linha excluída com sucesso!')
             setModalSucessoAberto(true)
         } catch (e: any) {
@@ -114,43 +162,45 @@ const Linhas = () => {
         }
     }
 
-
-
-    const handleIniciarEdicaoLinha = (linha: Linha) => {
-        setLinhaEditando(linha.id)
-        setNomeLinhaEditando(linha.nome)
-    }
-
-    const handleSalvarEdicaoLinha = async (linhaId: number) => {
-        if (!nomeLinhaEditando.trim()) {
-            setTituloErro('Erro!')
-            setMensagemErro('Informe o nome da linha')
-            setModalErroAberto(true)
-            return
-        }
-
-        try {
-            await atualizarLinha(linhaId, { nome: nomeLinhaEditando.trim() })
-            setLinhaEditando(null)
-            setNomeLinhaEditando('')
-            await carregarLinhas()
-            setMensagemSucesso('Linha atualizada com sucesso!')
-            setModalSucessoAberto(true)
-        } catch (e: any) {
-            setTituloErro('Erro!')
-            setMensagemErro(e?.message || 'Erro ao atualizar linha')
-            setModalErroAberto(true)
-        }
-    }
-
-    const handleCancelarEdicaoLinha = () => {
-        setLinhaEditando(null)
-        setNomeLinhaEditando('')
-    }
+    // Edição inline removida; edição é feita via formulário
 
     const indiceInicio = (paginaAtual - 1) * itensPorPagina
     const indiceFim = indiceInicio + itensPorPagina
-    const linhasPaginaAtual = linhas.slice(indiceInicio, indiceFim)
+
+    // Lista achatada: cada sublinha vira uma linha de listagem
+    const registrosListagem = linhas.flatMap((linha) => {
+        const base = { linhaId: linha.id, linhaNome: linha.nome, data: linha.data_criacao }
+        if (linha.sublinhas && linha.sublinhas.length > 0) {
+            return linha.sublinhas.map((s) => ({
+                id: `${linha.id}-${s.id}`,
+                linhaId: linha.id,
+                linhaNome: base.linhaNome,
+                sublinhaNome: s.nome,
+                sublinhaId: s.id,
+                data: base.data,
+            }))
+        }
+        return [{
+            id: `${linha.id}-0`,
+            linhaId: linha.id,
+            linhaNome: base.linhaNome,
+            sublinhaNome: '-',
+            sublinhaId: null as number | null,
+            data: base.data,
+        }]
+    })
+
+    const registrosPaginaAtual = registrosListagem.slice(indiceInicio, indiceFim)
+
+    // Marcar primeira ocorrência de cada linha para exibir as ações (Editar/Excluir) apenas uma vez
+    const registrosPaginaMarcados = (() => {
+        const vistos = new Set<number>()
+        return registrosPaginaAtual.map(reg => {
+            const mostrarAcoesDaLinha = !vistos.has(reg.linhaId)
+            if (mostrarAcoesDaLinha) vistos.add(reg.linhaId)
+            return { ...reg, mostrarAcoesDaLinha }
+        })
+    })()
 
     useEffect(() => {
         const totalPaginas = Math.ceil(linhas.length / itensPorPagina)
@@ -253,101 +303,85 @@ const Linhas = () => {
                                                         Sublinha
                                                     </span>
                                                     <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-8 col-span-1">
-                                                        Data Criação
+                                                        Data
                                                     </span>
                                                 </div>
                                                 <div className="w-24" />
                                             </div>
                                         </div>
 
-                                        {linhas.length === 0 ? (
+                                        {carregando ? (
+                                            <div className="flex justify-center items-center py-12">
+                                                <p className="text-gray-500">Carregando linhas...</p>
+                                            </div>
+                                        ) : registrosListagem.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center py-12">
-                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                <i className="bi bi-info-circle text-gray-300 text-5xl mb-4"></i>
                                                 <p className="text-gray-500 text-lg font-medium">
                                                     Nenhuma linha cadastrada
                                                 </p>
                                             </div>
                                         ) : (
-                                            <div className="space-y-3">
-                                                {linhasPaginaAtual.map((linha) => {
-                                                    const estaEditandoLinha = linhaEditando === linha.id
-                                                    return (
-                                                        <div key={linha.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 hover:bg-gray-50 transition-colors">
-                                                            <div className="flex items-center gap-3 w-full">
-                                                                <span className="w-8 text-gray-400">
-                                                                    <i className="bi bi-diagram-3"></i>
-                                                                </span>
-                                                                <div className="grid grid-cols-3 items-center w-full gap-4">
-                                                                    <div className="col-span-1">
-                                                                        {estaEditandoLinha ? (
-                                                                            <input
-                                                                                type="text"
-                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                                                value={nomeLinhaEditando}
-                                                                                onChange={(e) => setNomeLinhaEditando(e.target.value)}
-                                                                            />
-                                                                        ) : (
-                                                                            <span className="text-sm font-medium text-gray-900">{linha.nome}</span>
-                                                                        )}
+                                            <div className="space-y-4">
+                                                {registrosPaginaMarcados.map((reg) => (
+                                                        <div key={reg.id} className="px-4 py-3 border-b border-gray-200">
+                                                            <div className="p-0">
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="w-8" />
+                                                                    <div className="grid grid-cols-3 items-center w-full gap-4">
+                                                                        <div className="col-span-1">
+                                                                        <span className="text-gray-900">{reg.linhaNome}</span>
+                                                                        </div>
+                                                                        <div className="col-span-1 text-center">
+                                                                            <span className="text-gray-900">{reg.sublinhaNome}</span>
+                                                                        </div>
+                                                                        <div className="col-span-1 text-right pr-8">
+                                                                            <span className="text-gray-900">
+                                                                                {reg.data ? new Date(reg.data).toLocaleDateString('pt-BR') : '-'}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="col-span-1 text-center">
-                                                                        <span className="text-sm text-gray-700">
-                                                                            {Array.isArray(linha.sublinhas) && linha.sublinhas.length > 0 ? linha.sublinhas[0].nome : '-'}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="col-span-1 text-right pr-8">
-                                                                        <span className="text-sm text-gray-700">
-                                                                            {linha.data_criacao ? new Date(linha.data_criacao).toLocaleDateString('pt-BR') : '-'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 w-24 justify-end">
-                                                                {estaEditandoLinha ? (
-                                                                    <>
+                                                                    <div className="w-24 flex justify-end gap-2">
+                                                                        {/* Botão Editar por item (permite escolher qual sublinha editar) */}
                                                                         <button
-                                                                            onClick={() => handleSalvarEdicaoLinha(linha.id)}
-                                                                            className="p-2 rounded transition-colors hover:opacity-80"
-                                                                            style={{ color: 'var(--bg-azul)' }}
-                                                                            title="Salvar"
-                                                                        >
-                                                                            <i className="bi bi-check-lg"></i>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={handleCancelarEdicaoLinha}
-                                                                            className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 p-2 rounded transition-colors"
-                                                                            title="Cancelar"
-                                                                        >
-                                                                            <i className="bi bi-x-circle"></i>
-                                                                        </button>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => handleIniciarEdicaoLinha(linha)}
-                                                                            className="p-2 rounded transition-colors hover:opacity-80"
-                                                                            style={{ color: 'var(--bg-azul)' }}
-                                                                            title="Editar linha"
+                                                                            onClick={() => {
+                                                                                // Inicia edição via formulário "Cadastrar"
+                                                                                setModoEdicao(true)
+                                                                                setAbaAtiva('cadastrar')
+                                                                                setLinhaIdEdicao(reg.linhaId)
+                                                                                setSublinhaIdEdicao(reg.sublinhaId ?? null)
+                                                                                setNomeLinha(reg.linhaNome)
+                                                                                setNomeSublinha(reg.sublinhaNome === '-' ? '' : reg.sublinhaNome)
+                                                                                setNomeLinhaOriginal(reg.linhaNome)
+                                                                                setNomeSublinhaOriginal(reg.sublinhaNome === '-' ? '' : reg.sublinhaNome)
+                                                                            }}
+                                                                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                                                            title="Editar linha/sublinha"
                                                                         >
                                                                             <i className="bi bi-pencil"></i>
                                                                         </button>
-                                                                        <button
-                                                                            onClick={() => handleExcluirLinha(linha.id)}
-                                                                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
-                                                                            title="Excluir linha"
-                                                                        >
-                                                                            <i className="bi bi-trash"></i>
-                                                                        </button>
-                                                                    </>
-                                                                )}
+
+                                                                        {/* Botão Excluir só uma vez por linha */}
+                                                                    {reg.mostrarAcoesDaLinha && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={() => handleExcluirLinha(reg.linhaId)}
+                                                                                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                                                                    title="Excluir linha"
+                                                                                >
+                                                                                    <i className="bi bi-trash"></i>
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    )
-                                                })}
+                                                ))}
 
-                                                {linhas.length > itensPorPagina && (
+                                                {registrosListagem.length > itensPorPagina && (
                                                     <Paginacao
-                                                        totalItens={linhas.length}
+                                                        totalItens={registrosListagem.length}
                                                         itensPorPagina={itensPorPagina}
                                                         paginaAtual={paginaAtual}
                                                         onPageChange={setPaginaAtual}
@@ -363,6 +397,7 @@ const Linhas = () => {
                 </div>
             </div>
 
+            {/* Modais e Rodapé */}
             <ModalSucesso
                 isOpen={modalSucessoAberto}
                 onClose={() => setModalSucessoAberto(false)}
@@ -385,7 +420,7 @@ const Linhas = () => {
                 }}
                 onConfirm={confirmarExcluirLinha}
                 titulo="Confirmar Exclusão"
-                mensagem="Tem certeza que deseja excluir esta linha? Todas as sublinhas associadas também serão excluídas."
+                mensagem="Tem certeza que deseja excluir esta linha?"
                 textoConfirmar="Excluir"
                 textoCancelar="Cancelar"
                 corHeader="vermelho"

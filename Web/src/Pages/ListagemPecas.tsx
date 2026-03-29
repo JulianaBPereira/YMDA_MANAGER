@@ -393,7 +393,7 @@ const ListagemPecas = () => {
                     setItemParaDeletar(null)
                 }}
                 onConfirm={handleConfirmarDeletar}
-                titulo="Confirmar Exclusão"
+                titulo="Confirmar exclusão"
                 mensagem="Tem certeza que deseja deletar esta peça? Esta ação não pode ser desfeita."
                 textoConfirmar="Deletar"
                 textoCancelar="Cancelar"
@@ -417,7 +417,7 @@ const ListagemPecas = () => {
                     setModalErroDuplicado(false)
                     setMensagemErroDuplicado('')
                 }}
-                titulo="Item Já Cadastrado"
+                titulo="Item já cadastrado"
                 mensagem={mensagemErroDuplicado}
                 textoConfirmar="OK"
                 textoCancelar=""
