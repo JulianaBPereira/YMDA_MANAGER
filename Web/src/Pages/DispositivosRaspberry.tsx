@@ -48,7 +48,7 @@ const DispositivosRaspberry = () => {
                 id: d.id,
                 serial: d.serial_number,
                 nome: d.nome,
-                data_registro: d.criado_em,
+				data_registro: d.data_criacao,
             })))
         } catch (e: any) {
             setTituloErro('Erro!')
@@ -167,8 +167,8 @@ const DispositivosRaspberry = () => {
                                     }`}
                                     style={abaAtiva === 'cadastrar' ? { backgroundColor: 'var(--bg-azul)' } : {}}
                                 >
-                                    <i className="bi bi-cpu mr-2"></i>
-                                    {dispositivoEditando ? 'Editar Dispositivo' : 'Cadastrar Dispositivo'}
+									<i className="bi bi-plus-circle-fill mr-2"></i>
+									Cadastrar
                                 </button>
                                 <button
                                     onClick={() => setAbaAtiva('listar')}
@@ -210,7 +210,7 @@ const DispositivosRaspberry = () => {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                 value={nomeNovo}
                                                 onChange={(e) => setNomeNovo(e.target.value)}
-                                                placeholder="Ex: Posto 1, Solda Linha A"
+                                                placeholder="Ex: RFID13"
                                             />
                                         </div>
                                         <div className="flex gap-3">
@@ -222,8 +222,8 @@ const DispositivosRaspberry = () => {
                                                 onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.opacity = '0.9')}
                                                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                                             >
-                                                <i className="bi bi-check-lg"></i>
-                                                <span>{dispositivoEditando ? (salvando ? 'Salvando...' : 'Salvar') : (salvando ? 'Cadastrando...' : 'Cadastrar Dispositivo')}</span>
+												<i className={dispositivoEditando ? 'bi bi-check-lg' : 'bi bi-plus-circle-fill'}></i>
+												<span>{dispositivoEditando ? (salvando ? 'Salvando...' : 'Salvar') : (salvando ? 'Cadastrando...' : 'Cadastrar')}</span>
                                             </button>
                                             {dispositivoEditando && (
                                                 <button
@@ -239,63 +239,79 @@ const DispositivosRaspberry = () => {
                                     </form>
                                 ) : (
                                     <>
-                                        <p className="text-gray-500 text-sm mb-4">
-                                            Dispositivos Raspberry cadastrados. Use Editar para alterar o nome e Excluir para remover.
-                                        </p>
+                                     
                                         {carregando ? (
                                             <div className="flex justify-center items-center py-12">
                                                 <p className="text-gray-500">Carregando...</p>
                                             </div>
-                                        ) : dispositivos.length > 0 ? (
-                                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                                <table className="w-full">
-                                                    <thead className="bg-gray-50">
-                                                        <tr>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-40">Ações</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {dispositivos.map((dispositivo) => (
-                                                            <tr key={dispositivo.id} className="hover:bg-gray-50">
-                                                                <td className="px-4 py-3 text-sm font-medium text-gray-900 align-middle">
-                                                                    {dispositivo.serial}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-sm text-gray-900 align-middle">
-                                                                    {dispositivo.nome || '-'}
-                                                                </td>
-                                                                <td className="px-4 py-3 align-middle">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            onClick={() => handleEditar(dispositivo)}
-                                                                            className="p-2 rounded transition-colors hover:opacity-80"
-                                                                            style={{ color: 'var(--bg-azul)' }}
-                                                                            title="Editar dispositivo"
-                                                                        >
-                                                                            <i className="bi bi-pencil-square"></i>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleExcluir(dispositivo)}
-                                                                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
-                                                                            title="Excluir dispositivo"
-                                                                        >
-                                                                            <i className="bi bi-trash"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-12 border border-gray-200 rounded-lg bg-gray-50/50">
-                                                <i className="bi bi-cpu text-gray-300 text-4xl mb-3"></i>
-                                                <p className="text-gray-500 font-medium">Nenhum dispositivo cadastrado</p>
-                                                <p className="text-gray-400 text-sm mt-1">Use a aba Cadastrar para adicionar um dispositivo.</p>
-                                            </div>
-                                        )}
+										) : dispositivos.length > 0 ? (
+											<div>
+												<div className="px-4 py-2 bg-blue-50 rounded-md mb-2">
+													<div className="flex items-center gap-3">
+														<span className="w-8" />
+														<div className="grid grid-cols-3 items-center w-full gap-4">
+															<span className="text-xs font-semibold text-gray-600 uppercase tracking-wide col-span-1">
+																Serial
+															</span>
+															<span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center col-span-1">
+																Nome
+															</span>
+															<span className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right pr-8 col-span-1">
+																Data Registro
+															</span>
+														</div>
+														<div className="w-24" />
+													</div>
+												</div>
+
+												<div className="space-y-3">
+													{dispositivos.map((dispositivo) => (
+														<div key={dispositivo.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 hover:bg-gray-50 transition-colors">
+															<div className="flex items-center gap-3 w-full">
+																<span className="w-8 text-gray-400">
+																	<i className="bi bi-cpu"></i>
+																</span>
+																<div className="grid grid-cols-3 items-center w-full gap-4">
+																	<div className="col-span-1">
+																		<span className="text-sm font-medium text-gray-900">{dispositivo.serial}</span>
+																	</div>
+																	<div className="col-span-1 text-center">
+																		<span className="text-sm text-gray-700">{dispositivo.nome || '-'}</span>
+																	</div>
+																	<div className="col-span-1 text-right pr-8">
+																		<span className="text-sm text-gray-500">
+																			{dispositivo.data_registro ? new Date(dispositivo.data_registro).toLocaleDateString('pt-BR') : '-'}
+																		</span>
+																	</div>
+																</div>
+															</div>
+															<div className="flex items-center gap-2 w-24 justify-end">
+																<button
+																	onClick={() => handleEditar(dispositivo)}
+																	className="p-2 rounded transition-colors hover:opacity-80"
+																	style={{ color: 'var(--bg-azul)' }}
+																	title="Editar dispositivo"
+																>
+																	<i className="bi bi-pencil"></i>
+																</button>
+																<button
+																	onClick={() => handleExcluir(dispositivo)}
+																	className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition-colors"
+																	title="Excluir dispositivo"
+																>
+																	<i className="bi bi-trash"></i>
+																</button>
+															</div>
+														</div>
+													))}
+												</div>
+											</div>
+										) : (
+											<div className="flex flex-col items-center justify-center py-12">
+												<i className="bi bi-info-circle text-gray-300 text-5xl mb-4"></i>
+												<p className="text-gray-500 text-lg font-medium">Nenhum dispositivo cadastrado</p>
+											</div>
+										)}
                                     </>
                                 )}
                             </div>
@@ -321,12 +337,10 @@ const DispositivosRaspberry = () => {
                 onClose={fecharModalExcluir}
                 onConfirm={handleConfirmarExclusao}
                 titulo="Excluir dispositivo"
-                mensagem={dispositivoAExcluir
-                    ? `Tem certeza que deseja excluir o dispositivo "${dispositivoAExcluir.nome || dispositivoAExcluir.serial}"? Esta ação não pode ser desfeita.`
-                    : ''}
+				mensagem="tem certeza que deseja excluir este dispositvo ?"
                 textoConfirmar={excluindo ? 'Excluindo...' : 'Excluir'}
                 textoCancelar="Cancelar"
-                corHeader="laranja"
+				corHeader="vermelho"
             />
         </div>
     )

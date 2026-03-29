@@ -779,7 +779,7 @@ const Registros = () => {
                 isOpen={modalExcluirAberto}
                 onClose={() => setModalExcluirAberto(false)}
                 onConfirm={handleConfirmarExclusao}
-                titulo="Confirmar exclusão"
+                titulo="Confirmar Exclusão"
                 mensagem={`Tem certeza que deseja excluir ${registrosSelecionados.size} registro(s) selecionado(s)?\n\n⚠️ ATENÇÃO: Esta ação irá excluir permanentemente os registros do banco de dados principal. Esta operação não pode ser desfeita.`}
                 textoConfirmar="Sim, Excluir"
                 textoCancelar="Cancelar"
