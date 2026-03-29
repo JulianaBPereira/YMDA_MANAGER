@@ -122,20 +122,6 @@ const ModalOperacao: React.FC<ModalOperacaoProps> = ({ isOpen, onClose, onSave, 
         onClose()
     }
 
-    const handleLimpar = () => {
-        setOperacao('')
-        setProduto('')
-        setModelo('')
-        setLinha('')
-        setPosto('')
-        setTotens([])
-        setPecas([])
-        setCodigos([])
-        setTotenTemp('')
-        setPecaTemp('')
-        setCodigoTemp('')
-    }
-
     if (!isOpen) return null
 
     return (

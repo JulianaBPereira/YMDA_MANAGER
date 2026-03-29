@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from ..Model.Operacoes import Operacao, OperacaoPecas
+from ..Model.Produtos import Peca
 from datetime import date, time
 
 
@@ -9,17 +10,19 @@ class OperacaoDAO:
 
     def criar(
         self,
+        nome: str,
         sublinha_id: int,
         posto_id: int,
         produto_id: int,
         modelo_id: int,
-        dispositivo_id: int,
-        data_inicio: date,
-        horario_inicio: time,
+        dispositivo_id: int | None,
+        data_inicio: date | None,
+        horario_inicio: time | None,
         data_fim: date = None,
         horario_fim: time = None,
     ) -> Operacao:
         nova = Operacao(
+            nome=nome,
             sublinha_id=sublinha_id,
             posto_id=posto_id,
             produto_id=produto_id,
@@ -36,24 +39,36 @@ class OperacaoDAO:
         return nova
 
     def buscar_por_id(self, operacao_id: int) -> Operacao | None:
-        return self.db.query(Operacao).filter(Operacao.id == operacao_id).first()
+        return (
+            self.db.query(Operacao)
+            .options(selectinload(Operacao.pecas))
+            .filter(Operacao.id == operacao_id)
+            .first()
+        )
 
     def listar(self) -> list[Operacao]:
-        return self.db.query(Operacao).all()
+        return (
+            self.db.query(Operacao)
+            .options(selectinload(Operacao.pecas))
+            .all()
+        )
 
     def atualizar(
         self,
         operacao: Operacao,
+        nome: str = None,
         sublinha_id: int = None,
         posto_id: int = None,
         produto_id: int = None,
         modelo_id: int = None,
-        dispositivo_id: int = None,
+        dispositivo_id: int | None = None,
         data_inicio: date = None,
         data_fim: date = None,
         horario_inicio: time = None,
         horario_fim: time = None,
     ) -> Operacao:
+        if nome is not None:
+            operacao.nome = nome
         if sublinha_id is not None:
             operacao.sublinha_id = sublinha_id
         if posto_id is not None:
@@ -94,9 +109,6 @@ class OperacaoDAO:
         ).delete()
         self.db.commit()
 
-    def listar_pecas(self, operacao_id: int) -> list[OperacaoPecas]:
-        return (
-            self.db.query(OperacaoPecas)
-            .filter(OperacaoPecas.operacao_id == operacao_id)
-            .all()
-        )
+    def listar_pecas(self, operacao_id: int) -> list[Peca]:
+        operacao = self.buscar_por_id(operacao_id)
+        return operacao.pecas if operacao else []

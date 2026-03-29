@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, Date, Time, ForeignKey
+from sqlalchemy import Column, Integer, Date, Time, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from ..Database.database import Base
 
 
@@ -7,6 +8,7 @@ class Operacao(Base):
     __tablename__ = 'operacoes'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String(255), nullable=False)
 
     sublinha_id = Column(Integer, ForeignKey('sublinhas.id'))
     posto_id = Column(Integer, ForeignKey('postos.id'))
@@ -18,6 +20,7 @@ class Operacao(Base):
     data_fim = Column(Date)
     horario_inicio = Column(Time)
     horario_fim = Column(Time)
+    data_criacao = Column(DateTime, default=datetime.utcnow)
 
     sublinha = relationship("Sublinha", back_populates="operacoes")
     posto = relationship("Posto")

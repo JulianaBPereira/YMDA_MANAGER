@@ -1,5 +1,5 @@
 from ..DAO.operacoes_dao import OperacaoDAO
-from datetime import date, time
+from datetime import date, time, datetime
 
 
 class OperacaoService:
@@ -8,24 +8,30 @@ class OperacaoService:
 
     def criar_operacao(
         self,
+        nome: str,
         sublinha_id: int,
         posto_id: int,
         produto_id: int,
         modelo_id: int,
-        dispositivo_id: int,
-        data_inicio: date,
-        horario_inicio: time,
+        dispositivo_id: int = None,
+        data_inicio: date = None,
+        horario_inicio: time = None,
         data_fim: date = None,
         horario_fim: time = None,
     ):
+        if not nome or not nome.strip():
+            raise ValueError("Nome da operação é obrigatório")
+
+        agora = datetime.now()
         return self.dao.criar(
+            nome=nome.strip(),
             sublinha_id=sublinha_id,
             posto_id=posto_id,
             produto_id=produto_id,
             modelo_id=modelo_id,
             dispositivo_id=dispositivo_id,
-            data_inicio=data_inicio,
-            horario_inicio=horario_inicio,
+            data_inicio=data_inicio or agora.date(),
+            horario_inicio=horario_inicio or agora.time().replace(microsecond=0),
             data_fim=data_fim,
             horario_fim=horario_fim,
         )
@@ -42,6 +48,7 @@ class OperacaoService:
     def atualizar_operacao(
         self,
         operacao_id: int,
+        nome: str = None,
         sublinha_id: int = None,
         posto_id: int = None,
         produto_id: int = None,
@@ -61,6 +68,7 @@ class OperacaoService:
 
         return self.dao.atualizar(
             operacao,
+            nome=nome.strip() if isinstance(nome, str) else nome,
             sublinha_id=sublinha_id,
             posto_id=posto_id,
             produto_id=produto_id,
@@ -84,7 +92,7 @@ class OperacaoService:
             raise ValueError(f"Operação {operacao_id} não encontrada")
 
         pecas_existentes = self.dao.listar_pecas(operacao_id)
-        ids_existentes = [p.peca_id for p in pecas_existentes]
+        ids_existentes = [p.id for p in pecas_existentes]
         if peca_id in ids_existentes:
             raise ValueError(f"Peça {peca_id} já está vinculada a essa operação")
 
@@ -96,7 +104,7 @@ class OperacaoService:
             raise ValueError(f"Operação {operacao_id} não encontrada")
 
         pecas_existentes = self.dao.listar_pecas(operacao_id)
-        ids_existentes = [p.peca_id for p in pecas_existentes]
+        ids_existentes = [p.id for p in pecas_existentes]
         if peca_id not in ids_existentes:
             raise ValueError(f"Peça {peca_id} não está vinculada a essa operação")
 

@@ -1,14 +1,29 @@
-import { useState, useEffect, useRef } from 'react'
+import { Fragment, useState, useEffect, useRef, useMemo } from 'react'
 import TopBar from '../Components/topBar/TopBar'
 import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
 import ModalSucesso from '../Components/Modais/ModalSucesso'
 import ModalErro from '../Components/Modais/ModalErro'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
+import ModalEditarOperacao from '../Components/Operacoes/ModalEditarOperacao'
+import { listarProdutos } from '../services/produtos'
+import { listarModelos } from '../services/modelos'
+import { listarSublinhas } from '../services/linhas'
+import { listarPostos } from '../services/postos'
+import { listarDispositivos } from '../services/dispositivos'
+import { listarPecas } from '../services/pecas'
+import {
+    listarOperacoes as listarOperacoesAPI,
+    criarOperacao,
+    atualizarOperacao,
+    deletarOperacao,
+    adicionarPecaOperacao,
+    removerPecaOperacao,
+} from '../services/operacoes'
 
 
 interface Operacao {
-    id: string
+    id: number
     operacao: string
     produto: string
     modelo: string
@@ -16,6 +31,13 @@ interface Operacao {
     posto: string
     toten: string
     pecas: string[]
+    produto_id?: number
+    modelo_id?: number
+    sublinha_id?: number
+    posto_id?: number
+    dispositivo_id?: number
+    peca_ids?: number[]
+    data_criacao?: string
 }
 
 interface Produto {
@@ -29,13 +51,8 @@ interface Modelo {
     produto_id?: number
 }
 
-interface Linha {
-    linha_id: number
-    nome: string
-}
-
 interface Sublinha {
-    sublinha_id: number
+    id: number
     linha_id: number
     nome: string
     linha_nome?: string
@@ -53,14 +70,20 @@ interface Peca {
     id: number
     codigo: string
     nome: string
-    modelo_id: number
+    modelo_id?: number
 }
 
 interface Posto {
-    posto_id: number
+    id: number
     nome: string
-    toten_id?: number
-    totem_nome?: string
+    sublinha_id: number
+    dispositivo_id?: number
+}
+
+interface Dispositivo {
+    id: number
+    nome: string
+    serial_number: string
 }
 
 
@@ -78,20 +101,25 @@ const Operacoes = () => {
     const [tituloErro, setTituloErro] = useState('Erro!')
     const [modalConfirmacaoAberto, setModalConfirmacaoAberto] = useState(false)
     const [operacaoParaRemover, setOperacaoParaRemover] = useState<Operacao | null>(null)
+    const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false)
+    const [operacaoEditando, setOperacaoEditando] = useState<Operacao | null>(null)
+    const [filtroOperacao, setFiltroOperacao] = useState('')
+    const [filtroProduto, setFiltroProduto] = useState('')
+    const [filtroPosto, setFiltroPosto] = useState('')
+    const [operacaoExpandida, setOperacaoExpandida] = useState<number | null>(null)
 
     const [operacao, setOperacao] = useState('')
-    const [produto, setProduto] = useState('')
-    const [modelo, setModelo] = useState('')
+    const [produto, setProduto] = useState(0)
+    const [modelo, setModelo] = useState(0)
     const [linha, setLinha] = useState('')
-    const [posto, setPosto] = useState('')
+    const [posto, setPosto] = useState(0)
     const [toten, setToten] = useState('')
     const [pecas, setPecas] = useState<string[]>([])
     const [pecaTemp, setPecaTemp] = useState('')
-    const [operacaoEditandoId, setOperacaoEditandoId] = useState<string | null>(null)
     
     // Ref para controlar se estamos carregando dados de edição (evita limpar peças no useEffect)
     const isLoadingEditData = useRef(false)
-    const previousProdutoRef = useRef('')
+    const previousProdutoRef = useRef(0)
 
     // Dados para os dropdowns
     const [produtos, setProdutos] = useState<Produto[]>([])
@@ -99,6 +127,9 @@ const Operacoes = () => {
     const [modelos, setModelos] = useState<Modelo[]>([]) // Modelos filtrados por produto
     const [linhasComSublinhas, setLinhasComSublinhas] = useState<LinhaComSublinha[]>([])
     const [postos, setPostos] = useState<Posto[]>([])
+    const [sublinhas, setSublinhas] = useState<Sublinha[]>([])
+    const [dispositivos, setDispositivos] = useState<Dispositivo[]>([])
+    const [todasPecas, setTodasPecas] = useState<Peca[]>([])
     const [pecasDisponiveis, setPecasDisponiveis] = useState<Peca[]>([])
 
     // Carregar dados ao montar o componente
@@ -117,23 +148,16 @@ const Operacoes = () => {
         const produtoAlterou = previousProdutoRef.current !== produto
 
         if (produto) {
-            // Encontrar o produto selecionado pelo nome
-            const produtoSelecionado = produtos.find(p => p.nome === produto)
-            if (produtoSelecionado) {
-                // Filtrar modelos pelo produto_id
-                const modelosFiltrados = todosModelos.filter(m => m.produto_id === produtoSelecionado.id)
-                setModelos(modelosFiltrados)
-            } else {
-                setModelos([])
-            }
+            const modelosFiltrados = todosModelos.filter(m => m.produto_id === produto)
+            setModelos(modelosFiltrados)
             // Limpar modelo somente quando o produto realmente mudou
             if (produtoAlterou && !isLoadingEditData.current) {
-                setModelo('')
+                setModelo(0)
             }
         } else {
             setModelos([])
             if (produtoAlterou && !isLoadingEditData.current) {
-                setModelo('')
+                setModelo(0)
             }
         }
 
@@ -159,46 +183,163 @@ const Operacoes = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [modelo])
 
-    // Atualizar totem quando posto mudar
+    // Ao escolher posto, preencher linha e totem automaticamente
     useEffect(() => {
         if (posto && !isLoadingEditData.current) {
-            // Buscar o posto selecionado para obter o totem relacionado
-            const postoSelecionado = postos.find(p => p.nome === posto)
-            if (postoSelecionado && postoSelecionado.totem_nome) {
-                setToten(postoSelecionado.totem_nome)
+            const postoSelecionado = postos.find(p => p.id === posto)
+            if (!postoSelecionado) {
+                setLinha('')
+                setToten('')
+                return
+            }
+
+            const sublinhaSelecionada = sublinhas.find(s => s.id === postoSelecionado.sublinha_id)
+            if (sublinhaSelecionada) {
+                const linhaDisplay = sublinhaSelecionada.linha_nome
+                    ? `${sublinhaSelecionada.linha_nome} - ${sublinhaSelecionada.nome}`
+                    : sublinhaSelecionada.nome
+                setLinha(linhaDisplay)
+            } else {
+                setLinha('')
+            }
+
+            if (postoSelecionado.dispositivo_id) {
+                const dispositivoSelecionado = dispositivos.find(d => d.id === postoSelecionado.dispositivo_id)
+                setToten(dispositivoSelecionado?.serial_number || '')
             } else {
                 setToten('')
             }
         } else if (!posto && !isLoadingEditData.current) {
+            setLinha('')
             setToten('')
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [posto, postos])
+    }, [posto, postos, sublinhas, dispositivos])
 
     const carregarDadosDropdowns = async () => {
-        // Backend antigo removido: inicializar listas vazias
-        setProdutos([])
-        setTodosModelos([])
-        setModelos([])
-        setLinhasComSublinhas([])
-        setPostos([])
+        try {
+            const [produtosResp, modelosResp, sublinhasResp, postosResp, dispositivosResp, pecasResp] = await Promise.all([
+                listarProdutos(),
+                listarModelos(),
+                listarSublinhas(),
+                listarPostos(),
+                listarDispositivos(),
+                listarPecas(),
+            ])
+
+            const linhasMapeadas: LinhaComSublinha[] = sublinhasResp.map((s) => ({
+                linha_id: s.linha_id,
+                linha_nome: s.linha_nome || '',
+                sublinha_id: s.id,
+                sublinha_nome: s.nome,
+                display: s.linha_nome ? `${s.linha_nome} - ${s.nome}` : s.nome,
+            }))
+
+            setProdutos(produtosResp)
+            setTodosModelos(modelosResp)
+            setModelos(produto ? modelosResp.filter(m => m.produto_id === produto) : [])
+            setSublinhas(sublinhasResp)
+            setLinhasComSublinhas(linhasMapeadas)
+            setTodasPecas(pecasResp)
+            setPostos(postosResp.map((p) => ({
+                id: p.id,
+                nome: p.nome,
+                sublinha_id: p.sublinha_id,
+                dispositivo_id: p.dispositivo_id,
+            })))
+            setDispositivos(dispositivosResp.map((d) => ({
+                id: d.id,
+                nome: d.nome,
+                serial_number: d.serial_number,
+            })))
+        } catch {
+            setProdutos([])
+            setTodosModelos([])
+            setModelos([])
+            setSublinhas([])
+            setLinhasComSublinhas([])
+            setTodasPecas([])
+            setPostos([])
+            setDispositivos([])
+        }
     }
 
     const carregarLinhasComSublinhas = async () => {
-        // Backend antigo removido: manter vazio
-        setLinhasComSublinhas([])
+        try {
+            const sublinhasResp = await listarSublinhas()
+            setSublinhas(sublinhasResp)
+            setLinhasComSublinhas(sublinhasResp.map((s) => ({
+                linha_id: s.linha_id,
+                linha_nome: s.linha_nome || '',
+                sublinha_id: s.id,
+                sublinha_nome: s.nome,
+                display: s.linha_nome ? `${s.linha_nome} - ${s.nome}` : s.nome,
+            })))
+        } catch {
+            setSublinhas([])
+            setLinhasComSublinhas([])
+        }
     }
 
-    const carregarPecasPorModelo = async (_modeloNome?: string) => {
-        // Backend antigo removido: manter vazio
-        setPecasDisponiveis([])
+    const carregarPecasPorModelo = async (modeloId?: number) => {
+        const idModelo = modeloId || modelo
+        if (!idModelo) {
+            setPecasDisponiveis([])
+            return
+        }
+
+        setPecasDisponiveis(todasPecas.filter((p) => p.modelo_id === idModelo))
     }
 
     const carregarOperacoes = async () => {
-        setCarregando(true)
-        setErro(null)
-        setOperacoes([])
-        setCarregando(false)
+        try {
+            setCarregando(true)
+            setErro(null)
+
+            const dados = await listarOperacoesAPI()
+
+            const produtosPorId = new Map(produtos.map((p) => [p.id, p.nome]))
+            const modelosPorId = new Map(todosModelos.map((m) => [m.id, m.nome]))
+            const postosPorId = new Map(postos.map((p) => [p.id, p]))
+            const sublinhasPorId = new Map(sublinhas.map((s) => [s.id, s]))
+            const dispositivosPorId = new Map(dispositivos.map((d) => [d.id, d.serial_number]))
+
+            const operacoesMapeadas: Operacao[] = dados.map((op) => {
+                const postoDaOperacao = postosPorId.get(op.posto_id)
+                const sublinhaDaOperacao = postoDaOperacao ? sublinhasPorId.get(postoDaOperacao.sublinha_id) : undefined
+                const linhaDisplay = sublinhaDaOperacao
+                    ? (sublinhaDaOperacao.linha_nome
+                        ? `${sublinhaDaOperacao.linha_nome} - ${sublinhaDaOperacao.nome}`
+                        : sublinhaDaOperacao.nome)
+                    : 'Não informada'
+
+                return {
+                    id: op.id,
+                    operacao: op.nome,
+                    produto: produtosPorId.get(op.produto_id) || `Produto ${op.produto_id}`,
+                    modelo: modelosPorId.get(op.modelo_id) || `Modelo ${op.modelo_id}`,
+                    linha: linhaDisplay,
+                    posto: postoDaOperacao?.nome || `Posto ${op.posto_id}`,
+                    toten: op.dispositivo_id ? (dispositivosPorId.get(op.dispositivo_id) || `Totem ${op.dispositivo_id}`) : '',
+                    pecas: Array.isArray(op.pecas) ? op.pecas.map((peca) => `${peca.nome} - ${peca.codigo}`) : [],
+                    produto_id: op.produto_id,
+                    modelo_id: op.modelo_id,
+                    sublinha_id: op.sublinha_id,
+                    posto_id: op.posto_id,
+                    dispositivo_id: op.dispositivo_id || undefined,
+                    peca_ids: Array.isArray(op.pecas) ? op.pecas.map((peca) => peca.id) : [],
+                    data_criacao: op.data_criacao,
+                }
+            })
+
+            setOperacoes(operacoesMapeadas)
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar operações'
+            setErro(errorMessage)
+            setOperacoes([])
+        } finally {
+            setCarregando(false)
+        }
     }
 
 
@@ -225,24 +366,62 @@ const Operacoes = () => {
     const limparFormulario = () => {
         isLoadingEditData.current = false
         setOperacao('')
-        setProduto('')
-        setModelo('')
+        setProduto(0)
+        setModelo(0)
         setLinha('')
-        setPosto('')
+        setPosto(0)
         setToten('')
         setPecas([])
         setPecaTemp('')
-        setOperacaoEditandoId(null)
     }
 
+    const obterIdsPecasSelecionadas = (pecasSelecionadas: string[]) => {
+        return pecasSelecionadas
+            .map((pecaDisplay) => todasPecas.find((peca) => `${peca.nome} - ${peca.codigo}` === pecaDisplay)?.id)
+            .filter((id): id is number => typeof id === 'number')
+    }
 
-    const extrairNomeLinha = (display: string): string => {
-        // Se o display contém " - ", extrair apenas a parte da linha (antes do " - ")
-        // Caso contrário, retornar o display completo
-        if (display.includes(' - ')) {
-            return display.split(' - ')[0]
+    const sincronizarPecasDaOperacao = async (operacaoId: number, pecasSelecionadas: string[], pecaIdsAtuais: number[] = []) => {
+        const pecaIdsSelecionadas = obterIdsPecasSelecionadas(pecasSelecionadas)
+
+        const idsParaAdicionar = pecaIdsSelecionadas.filter((id) => !pecaIdsAtuais.includes(id))
+        const idsParaRemover = pecaIdsAtuais.filter((id) => !pecaIdsSelecionadas.includes(id))
+
+        await Promise.all(idsParaAdicionar.map((pecaId) => adicionarPecaOperacao(operacaoId, pecaId)))
+        await Promise.all(idsParaRemover.map((pecaId) => removerPecaOperacao(operacaoId, pecaId)))
+    }
+
+    const salvarOperacao = async (dados: {
+        operacao: string
+        produto_id: number
+        modelo_id: number
+        posto_id: number
+        pecas: string[]
+    }, operacaoId?: number, pecaIdsAtuais: number[] = []) => {
+        const postoSelecionado = postos.find((item) => item.id === dados.posto_id)
+        if (!postoSelecionado) {
+            throw new Error('Posto selecionado não encontrado')
         }
-        return display
+
+        const payload = {
+            nome: dados.operacao.trim(),
+            sublinha_id: postoSelecionado.sublinha_id,
+            posto_id: dados.posto_id,
+            produto_id: dados.produto_id,
+            modelo_id: dados.modelo_id,
+            dispositivo_id: postoSelecionado.dispositivo_id,
+        }
+
+        if (operacaoId) {
+            await atualizarOperacao(operacaoId, payload)
+            await sincronizarPecasDaOperacao(operacaoId, dados.pecas, pecaIdsAtuais)
+            setMensagemSucesso('Operação atualizada com sucesso!')
+            return
+        }
+
+        const operacaoCriada = await criarOperacao(payload)
+        await sincronizarPecasDaOperacao(operacaoCriada.id, dados.pecas)
+        setMensagemSucesso('Operação cadastrada com sucesso!')
     }
 
     const handleSalvar = async (e: React.FormEvent) => {
@@ -259,26 +438,17 @@ const Operacoes = () => {
             setErro(null)
             setCarregando(true)
 
-            // Extrair apenas o nome da linha do display
-            const nomeLinha = extrairNomeLinha(linha)
+            await salvarOperacao({
+                operacao,
+                produto_id: produto,
+                modelo_id: modelo,
+                posto_id: posto,
+                pecas,
+            })
 
-            const dadosOperacao = {
-                operacao: operacao.trim(),
-                produto,
-                modelo,
-                linha: nomeLinha,
-                posto,
-                totens: toten ? [toten] : undefined,
-                pecas: pecas.length > 0 ? pecas : undefined
-            }
-
-            // Backend antigo removido: salvar/atualizar desabilitado
-            setTituloErro('Indisponível')
-            setMensagemErro('Salvar/atualizar desabilitado enquanto o novo backend é construído.')
-            setModalErroAberto(true)
+            setModalSucessoAberto(true)
 
             limparFormulario()
-            setAbaAtiva('listar')
             await carregarOperacoes()
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar operação'
@@ -297,83 +467,101 @@ const Operacoes = () => {
     }
 
     const handleRemoverOperacao = async () => {
-        // Backend antigo removido: remoção desabilitada
-        setModalConfirmacaoAberto(false)
-        setOperacaoParaRemover(null)
-        setTituloErro('Indisponível')
-        setMensagemErro('Remoção desabilitada enquanto o novo backend é construído.')
-        setModalErroAberto(true)
+        if (!operacaoParaRemover) return
+
+        try {
+            await deletarOperacao(operacaoParaRemover.id)
+            setModalConfirmacaoAberto(false)
+            setOperacaoParaRemover(null)
+            setMensagemSucesso('Operação removida com sucesso!')
+            setModalSucessoAberto(true)
+            await carregarOperacoes()
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao remover operação'
+            setModalConfirmacaoAberto(false)
+            setOperacaoParaRemover(null)
+            setTituloErro('Erro!')
+            setMensagemErro(errorMessage)
+            setModalErroAberto(true)
+        }
     }
 
     const handleEditarOperacao = async (op: Operacao) => {
-        // Marcar que estamos carregando dados de edição (evita limpar peças no useEffect)
-        isLoadingEditData.current = true
-
-        // Garantir que os dados-base dos selects estejam carregados para o modo edição
         if (!produtos.length || !todosModelos.length || !postos.length) {
             await carregarDadosDropdowns()
         }
-        
-        // Garantir que as linhas com sublinhas estejam carregadas
         if (linhasComSublinhas.length === 0) {
             await carregarLinhasComSublinhas()
         }
-        
-        setOperacao(op.operacao)
-        setProduto(op.produto)
 
-        // Deixar os modelos do produto já filtrados antes de atribuir o valor editado
-        const produtoSelecionado = produtos.find(p => p.nome === op.produto)
-        if (produtoSelecionado) {
-            const modelosFiltrados = todosModelos.filter(m => m.produto_id === produtoSelecionado.id)
-            setModelos(modelosFiltrados)
-        } else {
-            setModelos([])
-        }
-
-        setModelo(op.modelo)
-        
-        // Encontrar o display correspondente ao nome da linha salvo
-        // Se a linha salva for apenas o nome, tentar encontrar o display completo
-        const linhaSalva = op.linha
-        const linhaEncontrada = linhasComSublinhas.find(l => 
-            l.linha_nome === linhaSalva || l.display === linhaSalva
-        )
-        // Se encontrou, usar o display. Se não, usar o primeiro item que corresponde à linha
-        // ou apenas o nome da linha se não houver sublinhas
-        if (linhaEncontrada) {
-            setLinha(linhaEncontrada.display)
-        } else {
-            // Tentar encontrar qualquer item com o mesmo nome de linha
-            const primeiraLinha = linhasComSublinhas.find(l => l.linha_nome === linhaSalva)
-            setLinha(primeiraLinha ? primeiraLinha.display : linhaSalva)
-        }
-        
-        setPosto(op.posto)
-        setToten(op.toten || op.totens?.[0] || '')
-        setPecas([...op.pecas])
-        setOperacaoEditandoId(op.id)
-        setAbaAtiva('cadastrar')
-        
-        // Carregar peças do modelo se houver modelo selecionado
-        if (op.modelo) {
-            await carregarPecasPorModelo(op.modelo)
-        }
-        
-        // Liberar limpeza automática somente após terminar de preencher os campos de edição
-        isLoadingEditData.current = false
+        setOperacaoEditando(op)
+        setModalEdicaoAberto(true)
     }
+
+    const handleSalvarEdicaoModal = async (dados: {
+        operacao: string
+        produto_id: number
+        modelo_id: number
+        posto_id: number
+        pecas: string[]
+    }) => {
+        if (!operacaoEditando) return
+
+        try {
+            await salvarOperacao(dados, operacaoEditando.id, operacaoEditando.peca_ids || [])
+            setModalEdicaoAberto(false)
+            setOperacaoEditando(null)
+            setModalSucessoAberto(true)
+            await carregarOperacoes()
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar operação'
+            setTituloErro('Erro!')
+            setMensagemErro(errorMessage)
+            setModalErroAberto(true)
+            throw error
+        }
+    }
+
+    const formatarData = (valor?: string) => {
+        if (!valor) return '-'
+        return new Date(valor).toLocaleDateString('pt-BR')
+    }
+
+    const operacoesFiltradas = useMemo(() => {
+        return operacoes.filter((item) => {
+            const condOperacao = !filtroOperacao || item.operacao.toLowerCase().includes(filtroOperacao.toLowerCase())
+            const condProduto = !filtroProduto || item.produto.toLowerCase().includes(filtroProduto.toLowerCase())
+            const condPosto = !filtroPosto || item.posto.toLowerCase().includes(filtroPosto.toLowerCase())
+            return condOperacao && condProduto && condPosto
+        })
+    }, [operacoes, filtroOperacao, filtroProduto, filtroPosto])
 
     const indiceInicio = (paginaAtual - 1) * itensPorPagina
     const indiceFim = indiceInicio + itensPorPagina
-    const operacoesPaginaAtual = operacoes.slice(indiceInicio, indiceFim)
+    const operacoesPaginaAtual = operacoesFiltradas.slice(indiceInicio, indiceFim)
+
+    const temFiltros = Boolean(filtroOperacao || filtroProduto || filtroPosto)
+
+    const limparFiltros = () => {
+        setFiltroOperacao('')
+        setFiltroProduto('')
+        setFiltroPosto('')
+    }
+
+    const toggleExpandirOperacao = (operacaoId: number) => {
+        setOperacaoExpandida((atual) => (atual === operacaoId ? null : operacaoId))
+    }
 
     useEffect(() => {
-        const totalPaginas = Math.ceil(operacoes.length / itensPorPagina)
+        setPaginaAtual(1)
+    }, [filtroOperacao, filtroProduto, filtroPosto])
+
+    useEffect(() => {
+        const totalPaginas = Math.ceil(operacoesFiltradas.length / itensPorPagina)
         if (paginaAtual > totalPaginas && totalPaginas > 0) {
             setPaginaAtual(totalPaginas)
         }
-    }, [operacoes.length, itensPorPagina, paginaAtual])
+    }, [operacoesFiltradas.length, itensPorPagina, paginaAtual])
 
     return (
         <div className="flex min-h-screen bg-gray-50">
@@ -383,7 +571,7 @@ const Operacoes = () => {
                 <div className="flex-1 p-6 pt-32 pb-20 md:pb-24 md:pl-20 transition-all duration-300">
                     <div className="max-w-[95%] mx-auto">
                         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                            <div className="flex border-b border-gray-200">
+                            <div className="flex border-b border-gray-200 bg-white">
                                 <button
                                     onClick={() => setAbaAtiva('cadastrar')}
                                     className={`flex-1 px-6 py-4 text-center font-medium ${
@@ -410,7 +598,7 @@ const Operacoes = () => {
                                 </button>
                             </div>
 
-                            <div className="p-6">
+                            <div className={abaAtiva === 'cadastrar' ? 'p-6' : ''}>
                                 {abaAtiva === 'cadastrar' ? (
                                     <form onSubmit={handleSalvar}>
                                         <div className="space-y-4">
@@ -435,12 +623,12 @@ const Operacoes = () => {
                                                 <select
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                     value={produto}
-                                                    onChange={(e) => setProduto(e.target.value)}
+                                                    onChange={(e) => setProduto(Number(e.target.value))}
                                                     required
                                                 >
-                                                    <option value="">Selecione</option>
+                                                    <option value={0}>Selecione</option>
                                                     {produtos.map((p) => (
-                                                        <option key={p.id} value={p.nome}>{p.nome}</option>
+                                                        <option key={p.id} value={p.id}>{p.nome}</option>
                                                     ))}
                                                 </select>
                                             </div>
@@ -452,31 +640,12 @@ const Operacoes = () => {
                                                 <select
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                     value={modelo}
-                                                    onChange={(e) => setModelo(e.target.value)}
+                                                    onChange={(e) => setModelo(Number(e.target.value))}
                                                     required
                                                 >
-                                                    <option value="">Selecione</option>
+                                                    <option value={0}>Selecione</option>
                                                     {modelos.map((m) => (
-                                                        <option key={m.id} value={m.nome}>{m.nome}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Linha *
-                                                </label>
-                                                <select
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    value={linha}
-                                                    onChange={(e) => setLinha(e.target.value)}
-                                                    required
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {linhasComSublinhas.map((l) => (
-                                                        <option key={`${l.linha_id}-${l.sublinha_id}`} value={l.display}>
-                                                            {l.display}
-                                                        </option>
+                                                        <option key={m.id} value={m.id}>{m.nome}</option>
                                                     ))}
                                                 </select>
                                             </div>
@@ -488,44 +657,38 @@ const Operacoes = () => {
                                                 <select
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                     value={posto}
-                                                    onChange={(e) => setPosto(e.target.value)}
+                                                    onChange={(e) => setPosto(Number(e.target.value))}
                                                     required
                                                 >
-                                                    <option value="">Selecione</option>
+                                                    <option value={0}>Selecione</option>
                                                     {postos.map((p) => (
-                                                        <option key={p.posto_id} value={p.nome}>{p.nome}</option>
+                                                        <option key={p.id} value={p.id}>{p.nome}</option>
                                                     ))}
                                                 </select>
                                             </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Linha *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700"
+                                                    value={linha || 'Selecione um posto para preencher'}
+                                                    readOnly
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                                     Toten/ID
                                                 </label>
-                                                <select
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                                    value={toten}
-                                                    onChange={(e) => setToten(e.target.value)}
-                                                    disabled={!posto}
-                                                >
-                                                    <option value="">
-                                                        {!posto 
-                                                            ? 'Selecione um posto primeiro' 
-                                                            : 'Selecione'}
-                                                    </option>
-                                                    {(() => {
-                                                        if (!posto) return null
-                                                        const postoSelecionado = postos.find(p => p.nome === posto)
-                                                        if (postoSelecionado && postoSelecionado.totem_nome) {
-                                                            return (
-                                                                <option key={postoSelecionado.toten_id} value={postoSelecionado.totem_nome}>
-                                                                    {postoSelecionado.totem_nome}
-                                                                </option>
-                                                            )
-                                                        }
-                                                        return null
-                                                    })()}
-                                                </select>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700"
+                                                    value={toten || 'Selecione um posto para preencher'}
+                                                    readOnly
+                                                />
                                             </div>
 
                                             <div>
@@ -537,10 +700,10 @@ const Operacoes = () => {
                                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                         value={pecaTemp}
                                                         onChange={(e) => setPecaTemp(e.target.value)}
-                                                        disabled={!modelo || pecasDisponiveis.length === 0}
+                                                        disabled={modelo === 0 || pecasDisponiveis.length === 0}
                                                     >
                                                         <option value="">
-                                                            {!modelo 
+                                                            {modelo === 0 
                                                                 ? 'Selecione um modelo primeiro' 
                                                                 : pecasDisponiveis.length === 0 
                                                                 ? 'Nenhuma peça disponível para este modelo'
@@ -585,115 +748,183 @@ const Operacoes = () => {
                                         </div>
 
                                         <div className="flex justify-end gap-3 mt-6">
-                                            {operacaoEditandoId && (
-                                                <button
-                                                    type="button"
-                                                    onClick={limparFormulario}
-                                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                                                >
-                                                    Cancelar edição
-                                                </button>
-                                            )}
                                             <button
                                                 type="submit"
-                                                className="px-4 py-2 text-white rounded-md disabled:opacity-50"
+                                                className="flex items-center gap-2 px-4 py-2 text-white rounded-md disabled:opacity-50"
                                                 style={{ backgroundColor: 'var(--bg-azul)' }}
                                                 disabled={!operacao.trim() || !produto || !modelo || !linha || !posto || carregando}
                                             >
-                                                {carregando ? 'Salvando...' : (operacaoEditandoId ? 'Atualizar' : 'Salvar')}
+                                                <i className="bi bi-plus-circle-fill"></i>
+                                                <span>
+                                                    {carregando ? 'Salvando...' : 'Cadastrar'}
+                                                </span>
                                             </button>
                                         </div>
                                     </form>
                                 ) : (
-                                    <div>
+                                    <div className="flex flex-col gap-6">
+                                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                            <div className="p-6">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                                                        <i className="bi bi-funnel"></i>
+                                                        Filtros de Busca
+                                                    </h4>
+                                                    {temFiltros && (
+                                                        <button
+                                                            onClick={limparFiltros}
+                                                            className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                                        >
+                                                            <i className="bi bi-x-circle"></i>
+                                                            Limpar Filtros
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">Operação</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            placeholder="Buscar por operação..."
+                                                            value={filtroOperacao}
+                                                            onChange={(e) => setFiltroOperacao(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">Produto</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            placeholder="Buscar por produto..."
+                                                            value={filtroProduto}
+                                                            onChange={(e) => setFiltroProduto(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">Posto</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            placeholder="Buscar por posto..."
+                                                            value={filtroPosto}
+                                                            onChange={(e) => setFiltroPosto(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {erro && (
-                                            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                                 {erro}
                                             </div>
                                         )}
-                                        {carregando ? null : operacoes.length > 0 ? (
+
+                                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                             <div className="overflow-x-auto">
                                                 <table className="w-full">
-                                                    <thead className="bg-gray-50">
-                                                        <tr>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operação</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Modelo</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Linha</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Posto</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Toten</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Peças</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                                    <thead>
+                                                        <tr className="border-b border-gray-200" style={{ backgroundColor: 'var(--bg-azul)' }}>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase w-8"></th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Operação</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Produto</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Modelo</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Linha</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Posto</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Toten</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Peças</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase">Data Criação</th>
+                                                            <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase">Ações</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="bg-white divide-y divide-gray-200">
-                                                        {operacoesPaginaAtual.map((op) => (
-                                                            <tr key={op.id} className="hover:bg-gray-50">
-                                                                <td className="px-4 py-4 text-sm font-medium text-gray-900">{op.operacao}</td>
-                                                                <td className="px-4 py-4 text-sm text-gray-900">{op.produto}</td>
-                                                                <td className="px-4 py-4 text-sm text-gray-900">{op.modelo}</td>
-                                                                <td className="px-4 py-4 text-sm text-gray-900">{op.linha}</td>
-                                                                <td className="px-4 py-4 text-sm text-gray-900">{op.posto}</td>
-                                                                <td className="px-4 py-4 text-sm text-gray-900">
-                                                                    {op.toten ? (
-                                                                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                                                                            {op.toten}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="text-gray-400">-</span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-4 py-4 text-sm text-gray-900">
-                                                                    {op.pecas && op.pecas.length > 0 ? (
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {op.pecas.map((peca, idx) => (
-                                                                                <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-                                                                                    {peca}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="text-gray-400">-</span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-4 py-4 text-sm">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            onClick={() => handleEditarOperacao(op)}
-                                                                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-                                                                        >
-                                                                            <i className="bi bi-pencil"></i>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => abrirModalRemover(op)}
-                                                                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                                                                        >
-                                                                            <i className="bi bi-trash"></i>
-                                                                        </button>
+                                                        {!carregando && operacoesPaginaAtual.length === 0 ? (
+                                                            <tr>
+                                                                <td colSpan={10} className="px-6 py-12 text-center">
+                                                                    <div className="flex flex-col items-center justify-center">
+                                                                        <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
+                                                                        <p className="text-gray-500 text-lg font-medium">
+                                                                            {temFiltros
+                                                                                ? 'Nenhuma operação encontrada com os filtros aplicados'
+                                                                                : 'Nenhuma operação cadastrada'}
+                                                                        </p>
                                                                     </div>
                                                                 </td>
                                                             </tr>
-                                                        ))}
+                                                        ) : (
+                                                            operacoesPaginaAtual.map((op) => (
+                                                                <Fragment key={op.id}>
+                                                                    <tr className="hover:bg-gray-50">
+                                                                        <td className="px-4 py-4">
+                                                                            <button
+                                                                                onClick={() => toggleExpandirOperacao(op.id)}
+                                                                                className="text-gray-600 hover:text-gray-800"
+                                                                                title="Mostrar peças"
+                                                                            >
+                                                                                <i className={`bi ${operacaoExpandida === op.id ? 'bi-chevron-down' : 'bi-chevron-right'}`}></i>
+                                                                            </button>
+                                                                        </td>
+                                                                        <td className="px-4 py-4 text-sm font-medium text-gray-900">{op.operacao}</td>
+                                                                        <td className="px-4 py-4 text-sm text-gray-900">{op.produto}</td>
+                                                                        <td className="px-4 py-4 text-sm text-gray-900">{op.modelo}</td>
+                                                                        <td className="px-4 py-4 text-sm text-gray-900">{op.linha}</td>
+                                                                        <td className="px-4 py-4 text-sm text-gray-900">{op.posto}</td>
+                                                                        <td className="px-4 py-4 text-sm text-gray-900">{op.toten || '-'}</td>
+                                                                        <td className="px-4 py-4 text-sm text-gray-900">{op.pecas.length} peça(s)</td>
+                                                                        <td className="px-4 py-4 text-sm text-gray-900">{formatarData(op.data_criacao)}</td>
+                                                                        <td className="px-4 py-4 text-sm text-center">
+                                                                            <div className="flex items-center justify-center gap-2">
+                                                                                <button
+                                                                                    onClick={() => handleEditarOperacao(op)}
+                                                                                    className="text-blue-600 hover:text-blue-800 transition-colors"
+                                                                                    title="Editar operação"
+                                                                                >
+                                                                                    <i className="bi bi-pencil-square"></i>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => abrirModalRemover(op)}
+                                                                                    className="text-red-600 hover:text-red-800 transition-colors"
+                                                                                    title="Remover operação"
+                                                                                >
+                                                                                    <i className="bi bi-trash"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                    {operacaoExpandida === op.id && (
+                                                                        <tr>
+                                                                            <td colSpan={10} className="px-6 py-4 bg-gray-50">
+                                                                                <div className="ml-8">
+                                                                                    {op.pecas.length > 0 ? (
+                                                                                        <ul className="space-y-1 text-sm text-gray-700">
+                                                                                            {op.pecas.map((peca, idx) => (
+                                                                                                <li key={idx}>{peca}</li>
+                                                                                            ))}
+                                                                                        </ul>
+                                                                                    ) : (
+                                                                                        <p className="text-sm text-gray-500">Nenhuma peça vinculada.</p>
+                                                                                    )}
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </Fragment>
+                                                            ))
+                                                        )}
                                                     </tbody>
                                                 </table>
-                                                {operacoes.length > itensPorPagina && (
-                                                    <div className="mt-4">
-                                                        <Paginacao
-                                                            totalItens={operacoes.length}
-                                                            itensPorPagina={itensPorPagina}
-                                                            paginaAtual={paginaAtual}
-                                                            onPageChange={setPaginaAtual}
-                                                        />
-                                                    </div>
-                                                )}
                                             </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-12">
-                                                <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
-                                                <p className="text-gray-500 text-lg font-medium">
-                                                    Nenhuma operação cadastrada
-                                                </p>
-                                            </div>
+                                        </div>
+
+                                        {!carregando && operacoesFiltradas.length > itensPorPagina && (
+                                            <Paginacao
+                                                totalItens={operacoesFiltradas.length}
+                                                itensPorPagina={itensPorPagina}
+                                                paginaAtual={paginaAtual}
+                                                onPageChange={setPaginaAtual}
+                                            />
                                         )}
                                     </div>
                                 )}
@@ -717,6 +948,22 @@ const Operacoes = () => {
                 titulo={tituloErro}
             />
 
+            <ModalEditarOperacao
+                isOpen={modalEdicaoAberto}
+                onClose={() => {
+                    setModalEdicaoAberto(false)
+                    setOperacaoEditando(null)
+                }}
+                onSave={handleSalvarEdicaoModal}
+                operacaoEditando={operacaoEditando}
+                produtos={produtos}
+                todosModelos={todosModelos}
+                postos={postos}
+                sublinhas={sublinhas}
+                dispositivos={dispositivos}
+                todasPecas={todasPecas}
+            />
+
             <ModalConfirmacao
                 isOpen={modalConfirmacaoAberto}
                 onClose={() => {
@@ -729,13 +976,6 @@ const Operacoes = () => {
                 textoConfirmar="Remover"
                 textoCancelar="Cancelar"
                 corHeader="vermelho"
-                item={operacaoParaRemover ? {
-                    Operação: operacaoParaRemover.operacao,
-                    Produto: operacaoParaRemover.produto,
-                    Modelo: operacaoParaRemover.modelo,
-                    Linha: operacaoParaRemover.linha,
-                    Posto: operacaoParaRemover.posto
-                } : undefined}
             />
         </div>
     )

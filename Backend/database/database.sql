@@ -124,6 +124,7 @@ CREATE TABLE modelo_pecas (
 -- =========================
 CREATE TABLE operacoes (
     id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
     sublinha_id INTEGER,
     posto_id INTEGER,
     produto_id INTEGER,

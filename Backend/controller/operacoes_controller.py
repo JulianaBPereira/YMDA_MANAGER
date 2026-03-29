@@ -1,45 +1,21 @@
-from datetime import date, time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..Database.database import get_db
 from ..DAO.operacoes_dao import OperacaoDAO
 from ..Services.operacoes_service import OperacaoService
-from pydantic import BaseModel
-from typing import Optional
+from ..Schema.operacoesSchema import OperacaoCreate, OperacaoUpdate, OperacaoResponse
+from ..Schema.pecasSchema import PecaResponse
 
 
 router = APIRouter(prefix="/operacoes", tags=["Operações"])
 
 
-class OperacaoCreate(BaseModel):
-    sublinha_id: int
-    posto_id: int
-    produto_id: int
-    modelo_id: int
-    dispositivo_id: int
-    data_inicio: date
-    horario_inicio: time
-    data_fim: Optional[date] = None
-    horario_fim: Optional[time] = None
-
-
-class OperacaoUpdate(BaseModel):
-    sublinha_id: Optional[int] = None
-    posto_id: Optional[int] = None
-    produto_id: Optional[int] = None
-    modelo_id: Optional[int] = None
-    dispositivo_id: Optional[int] = None
-    data_inicio: Optional[date] = None
-    data_fim: Optional[date] = None
-    horario_inicio: Optional[time] = None
-    horario_fim: Optional[time] = None
-
-
-@router.post("/", status_code=201)
+@router.post("/", response_model=OperacaoResponse, status_code=201)
 def criar_operacao(body: OperacaoCreate, db: Session = Depends(get_db)):
     service = OperacaoService(OperacaoDAO(db))
     try:
         return service.criar_operacao(
+            nome=body.nome,
             sublinha_id=body.sublinha_id,
             posto_id=body.posto_id,
             produto_id=body.produto_id,
@@ -54,13 +30,13 @@ def criar_operacao(body: OperacaoCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/")
+@router.get("/", response_model=list[OperacaoResponse])
 def listar_operacoes(db: Session = Depends(get_db)):
     service = OperacaoService(OperacaoDAO(db))
     return service.listar_operacoes()
 
 
-@router.get("/{operacao_id}")
+@router.get("/{operacao_id}", response_model=OperacaoResponse)
 def buscar_operacao(operacao_id: int, db: Session = Depends(get_db)):
     service = OperacaoService(OperacaoDAO(db))
     try:
@@ -69,12 +45,13 @@ def buscar_operacao(operacao_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.put("/{operacao_id}")
+@router.put("/{operacao_id}", response_model=OperacaoResponse)
 def atualizar_operacao(operacao_id: int, body: OperacaoUpdate, db: Session = Depends(get_db)):
     service = OperacaoService(OperacaoDAO(db))
     try:
         return service.atualizar_operacao(
             operacao_id=operacao_id,
+            nome=body.nome,
             sublinha_id=body.sublinha_id,
             posto_id=body.posto_id,
             produto_id=body.produto_id,
@@ -98,7 +75,7 @@ def deletar_operacao(operacao_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("/{operacao_id}/pecas")
+@router.get("/{operacao_id}/pecas", response_model=list[PecaResponse])
 def listar_pecas(operacao_id: int, db: Session = Depends(get_db)):
     service = OperacaoService(OperacaoDAO(db))
     try:

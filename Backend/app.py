@@ -11,9 +11,10 @@ from .Controller.operacoes_controller import router as operacoes_router
 from .Controller.postos_controller import router as postos_router
 from .Controller.turnos_controller import router as turnos_router
 from .Controller.usuarios_controller import router as usuarios_router
-from .Database.database import SessionLocal
+from .Database.database import SessionLocal, engine
 from .DAO.dispositvos_dao import DispositivosDAO
 from .Services.dispositivos_service import DispositivosService
+from sqlalchemy import text
 import uvicorn 
 from . import Model  # garante que todos os modelos sejam importados e mapeados
 
@@ -42,6 +43,10 @@ app.include_router(usuarios_router, prefix="/api")
 
 @app.on_event("startup")
 def registrar_dispositivo_local_ao_iniciar():
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS nome VARCHAR(255)"))
+        connection.execute(text("UPDATE operacoes SET nome = COALESCE(NULLIF(nome, ''), 'Operação sem nome')"))
+
     db = SessionLocal()
     try:
         service = DispositivosService(DispositivosDAO(db))
