@@ -47,3 +47,9 @@ export async function deletarModelo(id: number): Promise<void> {
     await fetchAPI(`/modelos/${id}`, { method: 'DELETE' })
 }
 
+export async function vincularPecaAoModelo(modeloId: number, pecaId: number): Promise<Modelo> {
+    return await fetchAPI(`/modelos/${modeloId}/pecas/${pecaId}`, {
+        method: 'POST',
+    })
+}
+

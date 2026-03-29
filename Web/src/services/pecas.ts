@@ -4,6 +4,7 @@ export interface Peca {
     id: number
     codigo: string
     nome: string
+    data_criacao?: string
     modelo_id?: number
     modelo_nome?: string
     produto_nome?: string

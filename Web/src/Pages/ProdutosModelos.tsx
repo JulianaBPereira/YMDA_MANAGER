@@ -11,10 +11,13 @@ import {
 import {
     criarModelo,
     listarModelos,
+    listarModelosPorProduto,
     type Modelo as ModeloApi,
+    vincularPecaAoModelo,
 } from '../services/modelos'
+import { criarPeca } from '../services/pecas'
 
-type Aba = 'produtos' | 'modelos'
+type Aba = 'produtos' | 'pecas'
 type AbaProduto = 'novo' | 'existente'
 
 const ProdutosModelos = () => {
@@ -31,12 +34,17 @@ const ProdutosModelos = () => {
 
     const [nomeProduto, setNomeProduto] = useState('')
     const [nomeModeloProdutoNovo, setNomeModeloProdutoNovo] = useState('')
-    const [nomeModelo, setNomeModelo] = useState('')
     const [nomeModeloProdutoExistente, setNomeModeloProdutoExistente] = useState('')
-    const [produtoSelecionadoId, setProdutoSelecionadoId] = useState('')
     const [produtoSelecionadoProdutoExistente, setProdutoSelecionadoProdutoExistente] = useState('')
+    const [produtoSelecionadoPeca, setProdutoSelecionadoPeca] = useState('')
+    const [modeloSelecionadoPeca, setModeloSelecionadoPeca] = useState('')
+    const [codigoPeca, setCodigoPeca] = useState('')
+    const [nomePeca, setNomePeca] = useState('')
+    const [modelosPorProdutoPeca, setModelosPorProdutoPeca] = useState<ModeloApi[]>([])
+    const [carregandoModelosPeca, setCarregandoModelosPeca] = useState(false)
     const [salvandoProduto, setSalvandoProduto] = useState(false)
     const [salvandoModelo, setSalvandoModelo] = useState(false)
+    const [salvandoPeca, setSalvandoPeca] = useState(false)
 
     const carregarProdutos = async () => {
         try {
@@ -66,7 +74,6 @@ const ProdutosModelos = () => {
 
     const nomeProdutoNormalizado = nomeProduto.trim().toLowerCase()
     const nomeModeloProdutoNovoNormalizado = nomeModeloProdutoNovo.trim().toLowerCase()
-    const nomeModeloNormalizado = nomeModelo.trim().toLowerCase()
     const nomeModeloProdutoExistenteNormalizado = nomeModeloProdutoExistente.trim().toLowerCase()
 
     const produtoDuplicado = produtos.find(
@@ -74,9 +81,6 @@ const ProdutosModelos = () => {
     )
     const modeloDuplicadoProdutoNovo = modelos.find(
         (modelo) => modelo.nome.trim().toLowerCase() === nomeModeloProdutoNovoNormalizado
-    )
-    const modeloDuplicadoCadastroModelo = modelos.find(
-        (modelo) => modelo.nome.trim().toLowerCase() === nomeModeloNormalizado
     )
     const modeloDuplicadoProdutoExistente = modelos.find(
         (modelo) =>
@@ -129,34 +133,62 @@ const ProdutosModelos = () => {
         }
     }
 
-    const handleSalvarModelo = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault()
-        if (!nomeModelo.trim() || !produtoSelecionadoId) {
-            return
+    useEffect(() => {
+        const carregarModelosDoProduto = async () => {
+            if (!produtoSelecionadoPeca) {
+                setModelosPorProdutoPeca([])
+                setModeloSelecionadoPeca('')
+                return
+            }
+
+            try {
+                setCarregandoModelosPeca(true)
+                const modelosDoProduto = await listarModelosPorProduto(Number(produtoSelecionadoPeca))
+                setModelosPorProdutoPeca(modelosDoProduto)
+                setModeloSelecionadoPeca('')
+            } catch (err) {
+                setErro(err instanceof Error ? err.message : 'Erro ao carregar modelos do produto')
+                setModelosPorProdutoPeca([])
+                setModeloSelecionadoPeca('')
+            } finally {
+                setCarregandoModelosPeca(false)
+            }
         }
 
-        if (modeloDuplicadoCadastroModelo) {
-            setMensagemErro('Já existe um modelo cadastrado com esse nome.')
-            setModalErroAberto(true)
+        carregarModelosDoProduto()
+    }, [produtoSelecionadoPeca])
+
+    const handleSalvarPeca = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        if (
+            !produtoSelecionadoPeca ||
+            !modeloSelecionadoPeca ||
+            !codigoPeca.trim() ||
+            !nomePeca.trim()
+        ) {
             return
         }
 
         try {
             limparMensagens()
-            setSalvandoModelo(true)
-            await criarModelo({
-                nome: nomeModelo.trim(),
-                produto_id: Number(produtoSelecionadoId),
+            setSalvandoPeca(true)
+            const pecaCriada = await criarPeca({
+                nome: nomePeca.trim(),
+                codigo: codigoPeca.trim(),
             })
-            setNomeModelo('')
-            setProdutoSelecionadoId('')
-            setMensagemSucesso('Modelo cadastrado com sucesso.')
+            await vincularPecaAoModelo(Number(modeloSelecionadoPeca), pecaCriada.id)
+            setProdutoSelecionadoPeca('')
+            setModeloSelecionadoPeca('')
+            setCodigoPeca('')
+            setNomePeca('')
+            setModelosPorProdutoPeca([])
+            setMensagemSucesso('Peça cadastrada com sucesso.')
             setModalSucessoAberto(true)
             await carregarProdutos()
         } catch (err) {
-            setErro(err instanceof Error ? err.message : 'Erro ao cadastrar modelo')
+            setErro(err instanceof Error ? err.message : 'Erro ao cadastrar peça')
         } finally {
-            setSalvandoModelo(false)
+            setSalvandoPeca(false)
         }
     }
 
@@ -221,17 +253,17 @@ const ProdutosModelos = () => {
                                     <button
                                         onClick={() => {
                                             limparMensagens()
-                                            setAba('modelos')
+                                            setAba('pecas')
                                         }}
                                         className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
-                                            aba === 'modelos'
+                                            aba === 'pecas'
                                                 ? 'text-white'
                                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                         }`}
-                                        style={aba === 'modelos' ? { backgroundColor: 'var(--bg-azul)' } : {}}
+                                        style={aba === 'pecas' ? { backgroundColor: 'var(--bg-azul)' } : {}}
                                         type="button"
                                     >
-                                        Cadastro de Modelo
+                                        Cadastro de Peças
                                     </button>
                                 </div>
                             </div>
@@ -423,53 +455,122 @@ const ProdutosModelos = () => {
                                         </form>
                                     )}
                                 </div>
-                            ) : aba === 'modelos' ? (
+                            ) : aba === 'pecas' ? (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                     <div className="text-white px-6 py-4" style={{ backgroundColor: 'var(--bg-azul)' }}>
                                         <h3 className="text-lg font-semibold flex items-center gap-2">
-                                            <i className="bi bi-diagram-3"></i>
-                                            Novo Modelo
+                                            <i className="bi bi-gear-wide-connected"></i>
+                                            Cadastro de Peças
                                         </h3>
                                     </div>
-                                    <form onSubmit={handleSalvarModelo} className="p-6 flex flex-col gap-5">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Produto Vinculado
-                                            </label>
-                                            <select
-                                                className={inputClasses}
-                                                value={produtoSelecionadoId}
-                                                onChange={(e) => setProdutoSelecionadoId(e.target.value)}
-                                                disabled={carregandoProdutos || produtosOrdenados.length === 0}
-                                                required
-                                            >
-                                                <option value="">
-                                                    {carregandoProdutos ? 'Carregando produtos...' : 'Selecione um produto'}
-                                                </option>
-                                                {produtosOrdenados.map((produto) => (
-                                                    <option key={produto.id} value={String(produto.id)}>
-                                                        {produto.nome}
+                                    <form onSubmit={handleSalvarPeca} className="p-6 flex flex-col gap-5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Produto
+                                                </label>
+                                                <select
+                                                    className={inputClasses}
+                                                    value={produtoSelecionadoPeca}
+                                                    onChange={(e) => {
+                                                        if (erro) {
+                                                            setErro(null)
+                                                        }
+                                                        setProdutoSelecionadoPeca(e.target.value)
+                                                    }}
+                                                    disabled={carregandoProdutos || produtosOrdenados.length === 0}
+                                                    required
+                                                >
+                                                    <option value="">
+                                                        {carregandoProdutos ? 'Carregando produtos...' : 'Selecione um produto'}
                                                     </option>
-                                                ))}
-                                            </select>
+                                                    {produtosOrdenados.map((produto) => (
+                                                        <option key={produto.id} value={String(produto.id)}>
+                                                            {produto.nome}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Modelo
+                                                </label>
+                                                <select
+                                                    className={inputClasses}
+                                                    value={modeloSelecionadoPeca}
+                                                    onChange={(e) => {
+                                                        if (erro) {
+                                                            setErro(null)
+                                                        }
+                                                        setModeloSelecionadoPeca(e.target.value)
+                                                    }}
+                                                    disabled={!produtoSelecionadoPeca || carregandoModelosPeca || modelosPorProdutoPeca.length === 0}
+                                                    required
+                                                >
+                                                    <option value="">
+                                                        {carregandoModelosPeca
+                                                            ? 'Carregando modelos...'
+                                                            : !produtoSelecionadoPeca
+                                                              ? 'Selecione um produto primeiro'
+                                                              : 'Selecione um modelo'}
+                                                    </option>
+                                                    {modelosPorProdutoPeca.map((modelo) => (
+                                                        <option key={modelo.id} value={String(modelo.id)}>
+                                                            {modelo.nome}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Nome do Modelo
-                                            </label>
-                                            <input
-                                                type="text"
-                                                className={inputClasses}
-                                                placeholder="Ex: Modelo de Produto A"
-                                                value={nomeModelo}
-                                                onChange={(e) => setNomeModelo(e.target.value)}
-                                                required
-                                            />
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Código da Peça
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className={inputClasses}
+                                                    placeholder="Digite o código da peça"
+                                                    value={codigoPeca}
+                                                    onChange={(e) => {
+                                                        if (erro) {
+                                                            setErro(null)
+                                                        }
+                                                        setCodigoPeca(e.target.value)
+                                                    }}
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Nome da Peça
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className={inputClasses}
+                                                    placeholder="Digite o nome da peça"
+                                                    value={nomePeca}
+                                                    onChange={(e) => {
+                                                        if (erro) {
+                                                            setErro(null)
+                                                        }
+                                                        setNomePeca(e.target.value)
+                                                    }}
+                                                    required
+                                                />
+                                            </div>
                                         </div>
 
                                         {(!carregandoProdutos && produtosOrdenados.length === 0) && (
                                             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
-                                                Cadastre um produto antes de criar um modelo.
+                                                Cadastre um produto antes de criar uma peça.
+                                            </div>
+                                        )}
+
+                                        {produtoSelecionadoPeca && !carregandoModelosPeca && modelosPorProdutoPeca.length === 0 && (
+                                            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+                                                Este produto não possui modelos cadastrados.
                                             </div>
                                         )}
 
@@ -485,14 +586,18 @@ const ProdutosModelos = () => {
                                                     if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
                                                 }}
                                                 disabled={
-                                                    salvandoModelo ||
-                                                    !nomeModelo.trim() ||
-                                                    !produtoSelecionadoId ||
-                                                    produtosOrdenados.length === 0
+                                                    salvandoPeca ||
+                                                    !produtoSelecionadoPeca ||
+                                                    !modeloSelecionadoPeca ||
+                                                    !codigoPeca.trim() ||
+                                                    !nomePeca.trim() ||
+                                                    carregandoModelosPeca ||
+                                                    produtosOrdenados.length === 0 ||
+                                                    modelosPorProdutoPeca.length === 0
                                                 }
                                             >
                                                 <i className="bi bi-plus-circle-fill"></i>
-                                                <span>{salvandoModelo ? 'Salvando...' : 'Cadastrar'}</span>
+                                                <span>{salvandoPeca ? 'Salvando...' : 'Cadastrar'}</span>
                                             </button>
                                         </div>
                                     </form>

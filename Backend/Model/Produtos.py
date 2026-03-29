@@ -40,6 +40,7 @@ class Peca(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     nome = Column(String, nullable=False)
     codigo = Column(String, nullable=False)
+    data_criacao = Column(DateTime, default=datetime.utcnow)
 
     # peça pode estar em vários modelos (N:N)
     modelos = relationship(

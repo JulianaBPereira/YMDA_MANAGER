@@ -106,7 +106,8 @@ CREATE TABLE modelos (
 CREATE TABLE pecas (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
-    codigo VARCHAR(255) NOT NULL
+    codigo VARCHAR(255) NOT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE modelo_pecas (
@@ -114,7 +115,8 @@ CREATE TABLE modelo_pecas (
     peca_id INTEGER,
     PRIMARY KEY (modelo_id, peca_id),
     FOREIGN KEY (modelo_id) REFERENCES modelos(id) ON DELETE CASCADE,
-    FOREIGN KEY (peca_id) REFERENCES pecas(id) ON DELETE CASCADE
+    FOREIGN KEY (peca_id) REFERENCES pecas(id) ON DELETE CASCADE,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- =========================
@@ -131,6 +133,7 @@ CREATE TABLE operacoes (
     data_fim DATE,
     horario_inicio TIME,
     horario_fim TIME,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sublinha_id) REFERENCES sublinhas(id) ON DELETE CASCADE,
     FOREIGN KEY (posto_id) REFERENCES postos(id) ON DELETE SET NULL,
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL,
@@ -157,6 +160,7 @@ CREATE TABLE registros_producao (
     data_fim DATE,
     horario_inicio TIME,
     horario_fim TIME,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE SET NULL,
     FOREIGN KEY (operacao_id) REFERENCES operacoes(id) ON DELETE CASCADE
 );

@@ -4,48 +4,37 @@ import MenuLateral from '../Components/MenuLateral/MenuLateral'
 import { Paginacao } from '../Components/Compartilhados/paginacao'
 import ModalFormulario from '../Components/Compartilhados/ModalFormulario'
 import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
+import ModalSucesso from '../Components/Modais/ModalSucesso'
 import { listarPecas, atualizarPeca, deletarPeca, type Peca as PecaApi } from '../services/pecas'
 import { listarModelos, type Modelo as ModeloApi } from '../services/modelos'
 import { listarProdutos, type Produto as ProdutoApi } from '../services/produtos'
-
 
 interface Peca {
     id: number
     codigo: string
     nome: string
+    data_criacao?: string
     modelo_id?: number
     modelo_nome?: string
     produto_nome?: string
     produto_id?: number
 }
 
-interface Modelo {
-    id: number
-    nome: string
-    produto_id?: number
-}
-
-interface Produto {
-    id: number
-    nome: string
-}
-
 const ListagemPecas = () => {
     const [pecas, setPecas] = useState<Peca[]>([])
-    const [modelos, setModelos] = useState<Modelo[]>([])
-    const [produtos, setProdutos] = useState<Produto[]>([])
     const [filtroCodigo, setFiltroCodigo] = useState('')
     const [filtroProduto, setFiltroProduto] = useState('')
     const [filtroModelo, setFiltroModelo] = useState('')
     const [paginaAtual, setPaginaAtual] = useState(1)
     const [erro, setErro] = useState<string | null>(null)
-    const [carregando, setCarregando] = useState(true)
     const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false)
     const [pecaEditando, setPecaEditando] = useState<Peca | null>(null)
     const [modalConfirmacao, setModalConfirmacao] = useState(false)
     const [itemParaDeletar, setItemParaDeletar] = useState<Peca | null>(null)
     const [modalErroDuplicado, setModalErroDuplicado] = useState(false)
     const [mensagemErroDuplicado, setMensagemErroDuplicado] = useState('')
+    const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
+    const [mensagemSucesso, setMensagemSucesso] = useState('')
 
     const itensPorPagina = 10
 
@@ -55,7 +44,6 @@ const ListagemPecas = () => {
 
     const carregarDados = async () => {
         try {
-            setCarregando(true)
             setErro(null)
 
             const [pecasResp, modelosResp, produtosResp] = await Promise.all([
@@ -65,8 +53,8 @@ const ListagemPecas = () => {
             ])
 
             // Mapear respostas para a estrutura esperada na página (enriquecendo quando possível)
-            const modelosPorId = new Map<number, ModeloApi>(modelosResp.map(m => [m.id, m]))
-            const produtosPorId = new Map<number, ProdutoApi>(produtosResp.map(p => [p.id, p]))
+            const modelosPorId = new Map<number, ModeloApi>(modelosResp.map((m) => [m.id, m]))
+            const produtosPorId = new Map<number, ProdutoApi>(produtosResp.map((p) => [p.id, p]))
 
             const pecasMapeadas: Peca[] = (pecasResp as PecaApi[]).map((p) => {
                 const modelo = p.modelo_id ? modelosPorId.get(p.modelo_id) : undefined
@@ -75,25 +63,24 @@ const ListagemPecas = () => {
                     id: p.id,
                     codigo: p.codigo,
                     nome: p.nome,
+                    data_criacao: p.data_criacao,
                     modelo_id: p.modelo_id,
                     produto_id: p.produto_id,
-                    modelo_nome: modelo?.nome,
-                    produto_nome: produto?.nome,
+                    modelo_nome: p.modelo_nome ?? modelo?.nome,
+                    produto_nome: p.produto_nome ?? produto?.nome,
                 }
             })
 
+            pecasMapeadas.sort((a, b) => b.id - a.id)
+
             setPecas(pecasMapeadas)
-            setModelos(modelosResp)
-            setProdutos(produtosResp)
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao carregar dados')
-        } finally {
-            setCarregando(false)
         }
     }
 
     const pecasFiltradas = useMemo(() => {
-        return pecas.filter(peca => {
+        return pecas.filter((peca) => {
             const matchCodigo = !filtroCodigo || peca.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())
             const matchModelo = !filtroModelo || (peca.modelo_nome?.toLowerCase().includes(filtroModelo.toLowerCase()) ?? false)
             const matchProduto = !filtroProduto || (peca.produto_nome?.toLowerCase().includes(filtroProduto.toLowerCase()) ?? false)
@@ -142,6 +129,8 @@ const ListagemPecas = () => {
             await atualizarPeca(pecaEditando.id, { nome, codigo })
             setModalEdicaoAberto(false)
             setPecaEditando(null)
+            setMensagemSucesso('Peça atualizada com sucesso.')
+            setModalSucessoAberto(true)
             await carregarDados()
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao salvar peça')
@@ -155,12 +144,14 @@ const ListagemPecas = () => {
 
     const handleConfirmarDeletar = async () => {
         if (!itemParaDeletar) return
-        
+
         try {
             setErro(null)
             await deletarPeca(itemParaDeletar.id)
             setModalConfirmacao(false)
             setItemParaDeletar(null)
+            setMensagemSucesso('Peça excluída com sucesso.')
+            setModalSucessoAberto(true)
             await carregarDados()
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao deletar')
@@ -168,8 +159,15 @@ const ListagemPecas = () => {
         }
     }
 
+    const formatarDataCriacao = (valor?: string) => {
+        if (!valor) return '-'
+        const data = new Date(valor)
+        if (Number.isNaN(data.getTime())) return '-'
+        return data.toLocaleDateString('pt-BR')
+    }
+
     const temFiltros = filtroCodigo || filtroProduto || filtroModelo
-    const inputClasses = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    const inputClasses = 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
 
     return (
         <div className="flex min-h-screen bg-gray-50">
@@ -179,15 +177,6 @@ const ListagemPecas = () => {
                 <div className="flex-1 p-6 pt-32 pb-20 md:pb-24 md:pl-20 transition-all duration-300">
                     <div className="max-w-[95%] mx-auto">
                         <div className="flex flex-col gap-6">
-                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                <div className="text-white px-6 py-4" style={{ backgroundColor: 'var(--bg-azul)' }}>
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <i className="bi bi-boxes"></i>
-                                        Listagem de Peças
-                                    </h3>
-                                </div>
-                            </div>
-
                             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
@@ -205,7 +194,7 @@ const ListagemPecas = () => {
                                             </button>
                                         )}
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -219,7 +208,7 @@ const ListagemPecas = () => {
                                                 onChange={(e) => setFiltroCodigo(e.target.value)}
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Produto
@@ -232,7 +221,7 @@ const ListagemPecas = () => {
                                                 onChange={(e) => setFiltroProduto(e.target.value)}
                                             />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Modelo
@@ -264,19 +253,12 @@ const ListagemPecas = () => {
                                 </div>
                             )}
 
-                            {carregando ? (
-                                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <div className="p-12 flex flex-col items-center justify-center">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                                        <p className="text-gray-500 text-lg font-medium">Carregando peças...</p>
-                                    </div>
-                                </div>
-                            ) : pecasFiltradas.length === 0 ? (
+                            {pecasFiltradas.length === 0 ? (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                     <div className="p-12 flex flex-col items-center justify-center">
                                         <i className="bi bi-inbox text-gray-300 text-5xl mb-4"></i>
                                         <p className="text-gray-500 text-lg font-medium">
-                                            {temFiltros 
+                                            {temFiltros
                                                 ? 'Nenhuma peça encontrada com os filtros aplicados'
                                                 : 'Nenhuma peça cadastrada'}
                                         </p>
@@ -293,6 +275,7 @@ const ListagemPecas = () => {
                                                         <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nome da Peça</th>
                                                         <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Modelo</th>
                                                         <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Produto</th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Data</th>
                                                         <th className="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Ações</th>
                                                     </tr>
                                                 </thead>
@@ -310,6 +293,9 @@ const ListagemPecas = () => {
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="text-sm text-gray-900">{peca.produto_nome || '-'}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm text-gray-900">{formatarDataCriacao(peca.data_criacao)}</div>
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                                 <div className="flex items-center justify-center gap-2">
@@ -335,7 +321,7 @@ const ListagemPecas = () => {
                                             </table>
                                         </div>
                                     </div>
-                                    
+
                                     {pecasFiltradas.length > itensPorPagina && (
                                         <Paginacao
                                             totalItens={pecasFiltradas.length}
@@ -359,10 +345,14 @@ const ListagemPecas = () => {
                     setErro(null)
                 }}
                 onSave={handleSalvarPeca}
-                itemEditando={pecaEditando ? {
-                    codigo_peca: pecaEditando.codigo,
-                    nome_peca: pecaEditando.nome
-                } : null}
+                itemEditando={
+                    pecaEditando
+                        ? {
+                              codigo_peca: pecaEditando.codigo,
+                              nome_peca: pecaEditando.nome,
+                          }
+                        : null
+                }
                 tituloNovo="Nova Peça"
                 tituloEditar="Editar Peça"
                 campos={[
@@ -371,15 +361,15 @@ const ListagemPecas = () => {
                         label: 'Código da Peça',
                         tipo: 'text',
                         placeholder: 'Ex: PEC001',
-                        required: true
+                        required: true,
                     },
                     {
                         nome: 'nome_peca',
                         label: 'Nome da Peça',
                         tipo: 'text',
                         placeholder: 'Ex: Peça Principal',
-                        required: true
-                    }
+                        required: true,
+                    },
                 ]}
                 textoBotao="Salvar"
                 icone="bi bi-boxes"
@@ -394,17 +384,10 @@ const ListagemPecas = () => {
                 }}
                 onConfirm={handleConfirmarDeletar}
                 titulo="Confirmar Exclusão"
-                mensagem="Tem certeza que deseja deletar esta peça? Esta ação não pode ser desfeita."
+                mensagem="Tem certeza que deseja deletar esta peça?"
                 textoConfirmar="Deletar"
                 textoCancelar="Cancelar"
                 corHeader="vermelho"
-                item={itemParaDeletar ? { 
-                    peca: `${itemParaDeletar.codigo} - ${itemParaDeletar.nome}`,
-                    modelo: itemParaDeletar.modelo_nome || '-',
-                    produto: itemParaDeletar.produto_nome || '-'
-                } : undefined}
-                camposItem={['peca', 'modelo', 'produto']}
-                mostrarDetalhes={true}
             />
 
             <ModalConfirmacao
@@ -422,6 +405,13 @@ const ListagemPecas = () => {
                 textoConfirmar="OK"
                 textoCancelar=""
                 corHeader="vermelho"
+            />
+
+            <ModalSucesso
+                isOpen={modalSucessoAberto}
+                onClose={() => setModalSucessoAberto(false)}
+                mensagem={mensagemSucesso}
+                titulo="Sucesso!"
             />
         </div>
     )
