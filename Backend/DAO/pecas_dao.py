@@ -1,5 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..Model.Produtos import Peca
 
 
@@ -14,6 +15,25 @@ class PecaDAO:
         self.db.commit()
         self.db.refresh(peca)
         return peca
+
+    def existe_por_codigo(self, codigo: str) -> bool:
+        return (
+            self.db.query(Peca)
+            .filter(func.lower(Peca.codigo) == codigo.lower())
+            .first()
+            is not None
+        )
+
+    def existe_por_codigo_excluindo_id(self, peca_id: int, codigo: str) -> bool:
+        return (
+            self.db.query(Peca)
+            .filter(
+                Peca.id != peca_id,
+                func.lower(Peca.codigo) == codigo.lower(),
+            )
+            .first()
+            is not None
+        )
 
 
     def buscar_por_id(self, peca_id: int) -> Optional[Peca]:

@@ -15,7 +15,7 @@ import {
     type Modelo as ModeloApi,
     vincularPecaAoModelo,
 } from '../services/modelos'
-import { criarPeca } from '../services/pecas'
+import { criarPeca, listarPecas, type Peca as PecaApi } from '../services/pecas'
 
 type Aba = 'produtos' | 'pecas'
 
@@ -23,6 +23,7 @@ const ProdutosModelos = () => {
     const [aba, setAba] = useState<Aba>('produtos')
     const [produtos, setProdutos] = useState<ProdutoApi[]>([])
     const [modelos, setModelos] = useState<ModeloApi[]>([])
+    const [pecas, setPecas] = useState<PecaApi[]>([])
     const [carregandoProdutos, setCarregandoProdutos] = useState(true)
     const [erro, setErro] = useState<string | null>(null)
     const [modalSucessoAberto, setModalSucessoAberto] = useState(false)
@@ -47,12 +48,14 @@ const ProdutosModelos = () => {
     const carregarProdutos = async () => {
         try {
             setCarregandoProdutos(true)
-            const [dadosProdutos, dadosModelos] = await Promise.all([
+            const [dadosProdutos, dadosModelos, dadosPecas] = await Promise.all([
                 listarProdutos(),
                 listarModelos(),
+                listarPecas(),
             ])
             setProdutos(dadosProdutos)
             setModelos(dadosModelos)
+            setPecas(dadosPecas)
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao carregar produtos')
         } finally {
@@ -84,6 +87,10 @@ const ProdutosModelos = () => {
         (modelo) =>
             modelo.nome.trim().toLowerCase() === nomeModeloProdutoExistenteNormalizado &&
             modelo.produto_id === Number(produtoSelecionadoProdutoExistente)
+    )
+    const codigoPecaNormalizado = codigoPeca.trim().toLowerCase()
+    const pecaDuplicada = pecas.find(
+        (peca) => peca.codigo.trim().toLowerCase() === codigoPecaNormalizado
     )
 
     // Ordenar produtos e modelos com o último cadastrado primeiro
@@ -164,6 +171,12 @@ const ProdutosModelos = () => {
             !codigoPeca.trim() ||
             !nomePeca.trim()
         ) {
+            return
+        }
+
+        if (pecaDuplicada) {
+            setMensagemErro('Já existe uma peça cadastrada com esse código.')
+            setModalErroAberto(true)
             return
         }
 
