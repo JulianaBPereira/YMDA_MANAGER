@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { fetchAPI } from '../api/api'
 
 const CadastroUsuario = () => {
     const navigate = useNavigate()
     const [username, setUsername] = useState('')
     const [nome, setNome] = useState('')
     const [senha, setSenha] = useState('')
-    const [role, setRole] = useState<'admin' | 'operador' | 'master'>('admin')
+    const [role, setRole] = useState<'admin' | 'master'>('admin')
     const [ativo, setAtivo] = useState(true)
     const [carregando, setCarregando] = useState(false)
     const [erro, setErro] = useState('')
@@ -31,7 +32,16 @@ const CadastroUsuario = () => {
                 return
             }
 
-            setErro('Cadastro desabilitado enquanto o novo backend é construído.')
+            await fetchAPI('/usuarios/', {
+                method: 'POST',
+                body: JSON.stringify({ username, nome, senha, role, ativo }),
+            })
+            setSucesso(true)
+            setUsername('')
+            setNome('')
+            setSenha('')
+            setRole('admin')
+            setAtivo(true)
         } catch (error: any) {
             const errorMessage = error?.message || 'Erro ao cadastrar usuário. Tente novamente.'
             setErro(errorMessage)
@@ -127,18 +137,16 @@ const CadastroUsuario = () => {
                             <select
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 value={role}
-                                onChange={(e) => setRole(e.target.value as 'admin' | 'operador' | 'master')}
+                                onChange={(e) => setRole(e.target.value as 'admin' | 'master')}
                                 required
                                 disabled={carregando}
                             >
                                 <option value="master">Master</option>
                                 <option value="admin">Administrador</option>
-                                <option value="operador">Operador</option>
                             </select>
                             <p className="text-xs text-gray-500 mt-1">
                                 {role === 'master' && 'Acesso total ao sistema'}
                                 {role === 'admin' && 'Acesso administrativo'}
-                                {role === 'operador' && 'Acesso apenas ao IHM'}
                             </p>
                         </div>
 

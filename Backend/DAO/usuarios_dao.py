@@ -10,7 +10,7 @@ class UsuariosDAO:
     def buscar_por_id(self, usuario_id: int):
         return (
             self.db.query(Usuario)
-            .filter(Usuario.id == usuario_id, Usuario.ativo == True)
+            .filter(Usuario.id == usuario_id)
             .first()
         )
 
@@ -24,7 +24,7 @@ class UsuariosDAO:
     def listar(self):
         return (
             self.db.query(Usuario)
-            .filter(Usuario.ativo == True)
+            .order_by(Usuario.id.desc())
             .all()
         )
 
@@ -42,7 +42,6 @@ class UsuariosDAO:
         return usuario
 
     def deletar(self, usuario: Usuario):
-        usuario.ativo = False
-        usuario.data_remocao = datetime.utcnow()
+        self.db.delete(usuario)
         self.db.commit()
         return True

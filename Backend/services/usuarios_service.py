@@ -45,5 +45,12 @@ class UsuarioService:
             self.dao.salvar(usuario)
         return usuario
 
+    def deletar_usuario(self, usuario_id: int):
+        usuario = self.dao.buscar_por_id(usuario_id)
+        if not usuario:
+            raise ValueError("Usuário não encontrado")
+        self.dao.deletar(usuario)
+        return True
+
     def listar_usuarios(self):
         return self.dao.listar()
