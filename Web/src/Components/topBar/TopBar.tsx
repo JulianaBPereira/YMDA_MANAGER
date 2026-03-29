@@ -13,7 +13,7 @@ const TopBar = () => {
             '/admin': 'Login Admin',
             '/cadastro-usuario': 'Cadastro de Usuario',
             '/funcionarios': 'Funcionários',
-            '/cadastro-produto-modelo': 'Cadastro Produto/Modelo',
+            '/cadastro-produto-modelo': 'Cadastrar Produtos/Peças',
             '/listagem-pecas': 'Listagem de Pecas',
             '/modelos': 'Modelos',
             '/registros': 'Registros',

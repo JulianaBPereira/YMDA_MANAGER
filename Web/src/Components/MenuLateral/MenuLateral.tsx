@@ -65,7 +65,7 @@ const MenuLateral = () => {
         menuItems.push(
             { to: '/registros', title: 'Registros', icon: 'bi-clipboard-data', label: 'Registro de Produção' },
             { to: '/funcionarios', title: 'Funcionarios', icon: 'bi-people', label: 'Cadastrar Funcionário' },
-            { to: '/cadastro-produto-modelo', title: 'CadastroProdutoModelo', icon: 'bi-box-seam', label: 'Cadastro Produto/Modelo' },
+            { to: '/cadastro-produto-modelo', title: 'Cadastrar Produtos/Peças', icon: 'bi-box-seam', label: 'Cadastrar Produtos/Peças' },
             { to: '/listagem-pecas', title: 'ListagemPecas', icon: 'bi-boxes', label: 'Listagem de Peças' },
             { to: '/listagem-produtos-modelos', title: 'ListagemProdutosModelos', icon: 'bi-list-ul', label: 'Listagem Produtos/Modelos' },
             { to: '/linhas', title: 'Linhas', icon: 'bi-layers', label: 'Cadastro de Linhas' },
@@ -84,7 +84,7 @@ const MenuLateral = () => {
         menuItems.push(
             { to: '/registros', title: 'Registros', icon: 'bi-clipboard-data', label: 'Registro de Produção' },
             { to: '/funcionarios', title: 'Funcionarios', icon: 'bi-people', label: 'Cadastrar Funcionário' },
-            { to: '/cadastro-produto-modelo', title: 'CadastroProdutoModelo', icon: 'bi-box-seam', label: 'Cadastro Produto/Modelo' },
+            { to: '/cadastro-produto-modelo', title: 'Cadastrar Produtos/Peças', icon: 'bi-box-seam', label: 'Cadastrar Produtos/Peças' },
             { to: '/listagem-pecas', title: 'ListagemPecas', icon: 'bi-boxes', label: 'Listagem de Peças' },
             { to: '/listagem-produtos-modelos', title: 'ListagemProdutosModelos', icon: 'bi-list-ul', label: 'Listagem Produtos/Modelos' },
             { to: '/linhas', title: 'Linhas', icon: 'bi-layers', label: 'Cadastro de Linhas' },

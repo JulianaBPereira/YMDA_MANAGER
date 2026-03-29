@@ -18,11 +18,9 @@ import {
 import { criarPeca } from '../services/pecas'
 
 type Aba = 'produtos' | 'pecas'
-type AbaProduto = 'novo' | 'existente'
 
 const ProdutosModelos = () => {
     const [aba, setAba] = useState<Aba>('produtos')
-    const [abaProduto, setAbaProduto] = useState<AbaProduto>('novo')
     const [produtos, setProdutos] = useState<ProdutoApi[]>([])
     const [modelos, setModelos] = useState<ModeloApi[]>([])
     const [carregandoProdutos, setCarregandoProdutos] = useState(true)
@@ -286,183 +284,145 @@ const ProdutosModelos = () => {
 
                             {aba === 'produtos' ? (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <div className="border-b border-gray-200 flex">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                limparMensagens()
-                                                setAbaProduto('novo')
-                                            }}
-                                            className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
-                                                abaProduto === 'novo'
-                                                    ? 'text-white'
-                                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                            }`}
-                                            style={abaProduto === 'novo' ? { backgroundColor: 'var(--bg-azul)' } : {}}
-                                        >
-                                            Produto Novo
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                limparMensagens()
-                                                setAbaProduto('existente')
-                                            }}
-                                            className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
-                                                abaProduto === 'existente'
-                                                    ? 'text-white'
-                                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                            }`}
-                                            style={abaProduto === 'existente' ? { backgroundColor: 'var(--bg-azul)' } : {}}
-                                        >
-                                            Produto Existente
-                                        </button>
-                                    </div>
-
-                                    {abaProduto === 'novo' ? (
-                                        <form onSubmit={handleSalvarProduto} className="p-6 flex flex-col gap-5">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Produto
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        className={inputClasses}
-                                                        placeholder="Digite o nome do produto"
-                                                        value={nomeProduto}
-                                                        onChange={(e) => {
-                                                            if (erro) {
-                                                                setErro(null)
-                                                            }
-                                                            setNomeProduto(e.target.value)
-                                                        }}
-                                                        required
-                                                    />
+                                    <div className="p-6">
+                                        <div className="mb-8">
+                                            <h4 className="text-base font-semibold text-gray-800 mb-4">Produto Novo</h4>
+                                            <form onSubmit={handleSalvarProduto} className="flex flex-col gap-5">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Produto
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            className={inputClasses}
+                                                            placeholder="Digite o nome do produto"
+                                                            value={nomeProduto}
+                                                            onChange={(e) => {
+                                                                if (erro) {
+                                                                    setErro(null)
+                                                                }
+                                                                setNomeProduto(e.target.value)
+                                                            }}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Modelo
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            className={`${inputClasses} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                                                            placeholder={nomeProduto.trim() ? 'Digite o nome do modelo' : 'Preencha o produto para habilitar'}
+                                                            value={nomeModeloProdutoNovo}
+                                                            onChange={(e) => setNomeModeloProdutoNovo(e.target.value)}
+                                                            disabled={!nomeProduto.trim()}
+                                                            required={!!nomeProduto.trim()}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Modelo
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        className={`${inputClasses} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
-                                                        placeholder={nomeProduto.trim() ? 'Digite o nome do modelo' : 'Preencha o produto para habilitar'}
-                                                        value={nomeModeloProdutoNovo}
-                                                        onChange={(e) => setNomeModeloProdutoNovo(e.target.value)}
-                                                        disabled={!nomeProduto.trim()}
-                                                        required={!!nomeProduto.trim()}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-end">
-                                                <button
-                                                    type="submit"
-                                                    className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
-                                                    style={{ backgroundColor: 'var(--bg-azul)' }}
-                                                    onMouseEnter={(e) => {
-                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
-                                                    }}
-                                                    disabled={
-                                                        salvandoProduto ||
-                                                        !nomeProduto.trim() ||
-                                                        !nomeModeloProdutoNovo.trim()
-                                                    }
-                                                >
-                                                    <i className="bi bi-plus-circle-fill"></i>
-                                                    <span>{salvandoProduto ? 'Salvando...' : 'Cadastrar'}</span>
-                                                </button>
-                                            </div>
-                                        </form>
-                                    ) : (
-                                        <form onSubmit={handleSalvarModeloProdutoExistente} className="p-6 flex flex-col gap-5">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Produto
-                                                    </label>
-                                                    <select
-                                                        className={inputClasses}
-                                                        value={produtoSelecionadoProdutoExistente}
-                                                        onChange={(e) => {
-                                                            if (erro) {
-                                                                setErro(null)
-                                                            }
-                                                            setProdutoSelecionadoProdutoExistente(e.target.value)
+                                                <div className="flex justify-end">
+                                                    <button
+                                                        type="submit"
+                                                        className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
+                                                        style={{ backgroundColor: 'var(--bg-azul)' }}
+                                                        onMouseEnter={(e) => {
+                                                            if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
                                                         }}
-                                                        disabled={carregandoProdutos || produtosOrdenados.length === 0}
-                                                        required
+                                                        onMouseLeave={(e) => {
+                                                            if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
+                                                        }}
+                                                        disabled={
+                                                            salvandoProduto ||
+                                                            !nomeProduto.trim() ||
+                                                            !nomeModeloProdutoNovo.trim()
+                                                        }
                                                     >
-                                                        <option value="">
-                                                            {carregandoProdutos ? 'Carregando produtos...' : 'Selecione um produto'}
-                                                        </option>
-                                                        {produtosOrdenados.map((produto) => (
-                                                            <option key={produto.id} value={String(produto.id)}>
-                                                                {produto.nome}
+                                                        <i className="bi bi-plus-circle-fill"></i>
+                                                        <span>{salvandoProduto ? 'Salvando...' : 'Cadastrar'}</span>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+
+                                        <div className="border-t border-gray-200 pt-8">
+                                            <h4 className="text-base font-semibold text-gray-800 mb-4">Produto Existente</h4>
+                                            <form onSubmit={handleSalvarModeloProdutoExistente} className="flex flex-col gap-5">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Produto
+                                                        </label>
+                                                        <select
+                                                            className={inputClasses}
+                                                            value={produtoSelecionadoProdutoExistente}
+                                                            onChange={(e) => {
+                                                                if (erro) {
+                                                                    setErro(null)
+                                                                }
+                                                                setProdutoSelecionadoProdutoExistente(e.target.value)
+                                                            }}
+                                                            disabled={carregandoProdutos || produtosOrdenados.length === 0}
+                                                            required
+                                                        >
+                                                            <option value="">
+                                                                {carregandoProdutos ? 'Carregando produtos...' : 'Selecione um produto'}
                                                             </option>
-                                                        ))}
-                                                    </select>
+                                                            {produtosOrdenados.map((produto) => (
+                                                                <option key={produto.id} value={String(produto.id)}>
+                                                                    {produto.nome}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Modelo
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            className={inputClasses}
+                                                            placeholder="Digite o nome do modelo"
+                                                            value={nomeModeloProdutoExistente}
+                                                            onChange={(e) => {
+                                                                if (erro) {
+                                                                    setErro(null)
+                                                                }
+                                                                setNomeModeloProdutoExistente(e.target.value)
+                                                            }}
+                                                            required
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Modelo
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        className={inputClasses}
-                                                        placeholder="Digite o nome do modelo"
-                                                        value={nomeModeloProdutoExistente}
-                                                        onChange={(e) => {
-                                                            if (erro) {
-                                                                setErro(null)
-                                                            }
-                                                            setNomeModeloProdutoExistente(e.target.value)
+                                                <div className="flex justify-end">
+                                                    <button
+                                                        type="submit"
+                                                        className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
+                                                        style={{ backgroundColor: 'var(--bg-azul)' }}
+                                                        onMouseEnter={(e) => {
+                                                            if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
                                                         }}
-                                                        required
-                                                    />
+                                                        onMouseLeave={(e) => {
+                                                            if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
+                                                        }}
+                                                        disabled={
+                                                            salvandoModelo ||
+                                                            !nomeModeloProdutoExistente.trim() ||
+                                                            !produtoSelecionadoProdutoExistente ||
+                                                            produtosOrdenados.length === 0
+                                                        }
+                                                    >
+                                                        <i className="bi bi-plus-circle-fill"></i>
+                                                        <span>{salvandoModelo ? 'Salvando...' : 'Cadastrar'}</span>
+                                                    </button>
                                                 </div>
-                                            </div>
-                                            {(!carregandoProdutos && produtosOrdenados.length === 0) && (
-                                                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
-                                                    Cadastre um produto antes de criar um modelo.
-                                                </div>
-                                            )}
-                                            <div className="flex justify-end">
-                                                <button
-                                                    type="submit"
-                                                    className="flex items-center gap-2 px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-60"
-                                                    style={{ backgroundColor: 'var(--bg-azul)' }}
-                                                    onMouseEnter={(e) => {
-                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '0.9'
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        if (!e.currentTarget.disabled) e.currentTarget.style.opacity = '1'
-                                                    }}
-                                                    disabled={
-                                                        salvandoModelo ||
-                                                        !nomeModeloProdutoExistente.trim() ||
-                                                        !produtoSelecionadoProdutoExistente ||
-                                                        produtosOrdenados.length === 0
-                                                    }
-                                                >
-                                                    <i className="bi bi-plus-circle-fill"></i>
-                                                    <span>{salvandoModelo ? 'Salvando...' : 'Cadastrar'}</span>
-                                                </button>
-                                            </div>
-                                        </form>
-                                    )}
+                                            </form>
+                                        </div>
+                                    </div>
                                 </div>
                             ) : aba === 'pecas' ? (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <div className="text-white px-6 py-4" style={{ backgroundColor: 'var(--bg-azul)' }}>
-                                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                                            <i className="bi bi-gear-wide-connected"></i>
-                                            Cadastro de Peças
-                                        </h3>
-                                    </div>
                                     <form onSubmit={handleSalvarPeca} className="p-6 flex flex-col gap-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div>
@@ -561,12 +521,6 @@ const ProdutosModelos = () => {
                                                 />
                                             </div>
                                         </div>
-
-                                        {(!carregandoProdutos && produtosOrdenados.length === 0) && (
-                                            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
-                                                Cadastre um produto antes de criar uma peça.
-                                            </div>
-                                        )}
 
                                         {produtoSelecionadoPeca && !carregandoModelosPeca && modelosPorProdutoPeca.length === 0 && (
                                             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
