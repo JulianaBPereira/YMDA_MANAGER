@@ -11,6 +11,7 @@ class RegistroCreate(BaseModel):
 	horario_inicio: Optional[time] = None
 	horario_fim: Optional[time] = None
 	comentario: Optional[str] = None
+	quantidade: Optional[int] = None
 
 
 class RegistroUpdate(BaseModel):
@@ -19,12 +20,14 @@ class RegistroUpdate(BaseModel):
 	horario_inicio: Optional[time] = None
 	horario_fim: Optional[time] = None
 	comentario: Optional[str] = None
+	quantidade: Optional[int] = None
 
 
 class RegistroFinalizar(BaseModel):
 	data_fim: date
 	horario_fim: time
 	comentario: Optional[str] = None
+	quantidade: Optional[int] = None
 
 
 class RegistroComentarioUpdate(BaseModel):
@@ -33,8 +36,8 @@ class RegistroComentarioUpdate(BaseModel):
 
 class RegistroResponse(BaseModel):
 	id: int
-	funcionario_id: int
-	operacao_id: int
+	funcionario_id: Optional[int] = None
+	operacao_id: Optional[int] = None
 	data_inicio: Optional[date] = None
 	data_fim: Optional[date] = None
 	horario_inicio: Optional[time] = None

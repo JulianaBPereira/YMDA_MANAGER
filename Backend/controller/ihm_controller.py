@@ -245,6 +245,7 @@ async def registrar_saida(body: RegistroSaidaBody, db: Session = Depends(get_db)
             data_fim=agora.date(),
             horario_fim=agora.time().replace(microsecond=0),
             comentario=body.comentario,
+            quantidade=body.quantidade,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

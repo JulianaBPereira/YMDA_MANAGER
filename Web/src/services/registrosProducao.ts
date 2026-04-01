@@ -30,12 +30,14 @@ export interface CriarRegistroData {
     horario_inicio: string
     data_fim?: string | null
     horario_fim?: string | null
+    quantidade?: number | null
 }
 
 export interface FinalizarRegistroData {
     data_fim: string
     horario_fim: string
     comentario?: string | null
+    quantidade?: number | null
 }
 
 export interface AtualizarComentarioRegistroData {
@@ -78,4 +80,3 @@ export async function atualizarComentarioRegistro(id: number, data: AtualizarCom
         body: JSON.stringify(data),
     })
 }
-

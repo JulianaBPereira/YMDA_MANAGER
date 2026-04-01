@@ -19,6 +19,7 @@ class RegistroProducaoDAO:
         horario_inicio: Optional[time] = None,
         horario_fim: Optional[time] = None,
         comentario: Optional[str] = None,
+        quantidade: Optional[int] = None,
     ) -> RegistroProducao:
         registro = RegistroProducao(
             funcionario_id=funcionario_id,
@@ -28,6 +29,7 @@ class RegistroProducaoDAO:
             horario_inicio=horario_inicio,
             horario_fim=horario_fim,
             comentario=comentario,
+            quantidade=quantidade,
         )
         self.db.add(registro)
         self.db.commit()
@@ -80,6 +82,7 @@ class RegistroProducaoDAO:
         data_fim: date,
         horario_fim: time,
         comentario: Optional[str] = None,
+        quantidade: Optional[int] = None,
     ) -> Optional[RegistroProducao]:
         """Encerra um registro definindo data e horário de fim."""
         return self.atualizar(
@@ -87,6 +90,7 @@ class RegistroProducaoDAO:
             data_fim=data_fim,
             horario_fim=horario_fim,
             comentario=comentario,
+            quantidade=quantidade,
         )
 
     def atualizar(
@@ -97,6 +101,7 @@ class RegistroProducaoDAO:
         horario_inicio: Optional[time] = None,
         horario_fim: Optional[time] = None,
         comentario: Optional[str] = None,
+        quantidade: Optional[int] = None,
     ) -> Optional[RegistroProducao]:
         registro = self.buscar_por_id(registro_id)
         if not registro:
@@ -112,6 +117,8 @@ class RegistroProducaoDAO:
             registro.horario_fim = horario_fim
         if comentario is not None:
             registro.comentario = comentario
+        if quantidade is not None:
+            registro.quantidade = quantidade
 
         self.db.commit()
         self.db.refresh(registro)

@@ -253,6 +253,15 @@ const Operacao = () => {
 
     try {
       setCarregando(true);
+
+      // Segurança extra: ao voltar da finalização, nunca criar novo registro
+      // se já existir um registro aberto para posto/matrícula.
+      const existente = await producaoAPI.buscarRegistroAberto(postoAtual, funcionarioMatricula);
+      if (existente?.registro) {
+        setRegistroAberto(existente.registro);
+        setCarregando(false);
+        return;
+      }
       
       const response = await producaoAPI.registrarEntrada({
         posto: postoAtual,

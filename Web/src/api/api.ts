@@ -109,6 +109,11 @@ export const producaoAPI = {
             body: JSON.stringify(payload),
         })
     },
+    async cancelarRegistro(registroId: number) {
+        return await fetchAPI(`/registros-producao/${registroId}`, {
+            method: 'DELETE',
+        })
+    },
 }
 
 export const dashboardAPI = {

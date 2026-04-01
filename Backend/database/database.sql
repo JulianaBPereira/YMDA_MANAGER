@@ -169,6 +169,7 @@ CREATE TABLE registros_producao (
     data_fim DATE,
     horario_inicio TIME,
     horario_fim TIME,
+    quantidade INTEGER,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE SET NULL,
     FOREIGN KEY (operacao_id) REFERENCES operacoes(id) ON DELETE CASCADE

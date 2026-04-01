@@ -96,26 +96,6 @@ const FinalizarProducao = () => {
     navigate('/ihm/leitor', { replace: true });
   };
 
-  const voltarParaOperacao = () => {
-    try {
-      const sessao = localStorage.getItem('ihm_sessao');
-      if (sessao) {
-        const dados = JSON.parse(sessao);
-        delete dados.quantidadeFinalizacao;
-        delete dados.indicePecaAtualFinalizacao;
-        localStorage.setItem('ihm_sessao', JSON.stringify(dados));
-      }
-    } catch {
-      // ignorar erros
-    }
-
-    navigate('/ihm/operacao', {
-      state: {
-        operador: operador || undefined
-      }
-    });
-  };
-  
   useEffect(() => {
     inputRef.current?.focus();
   }, [location.key]);
@@ -297,6 +277,23 @@ const FinalizarProducao = () => {
     }
   };
 
+  const handleCancelar = async () => {
+    try {
+      setCarregando(true);
+      setErro(null);
+
+      if (registroId) {
+        await producaoAPI.cancelarRegistro(registroId);
+      }
+
+      voltarAoLeitor();
+    } catch (error: any) {
+      console.error('Erro ao cancelar operação:', error);
+      setErro(error.message || 'Erro ao cancelar operação');
+      setCarregando(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && quantidade.trim()) {
       handleEnviarOuConcluir();
@@ -306,15 +303,12 @@ const FinalizarProducao = () => {
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col items-center justify-start pt-16 p-6 relative">
       <button
-        onClick={voltarParaOperacao}
+        onClick={handleCancelar}
         disabled={carregando}
-        className="absolute top-6 right-6 px-10 py-6 text-white text-4xl font-bold rounded-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gray-600 hover:bg-gray-700 z-10"
-        style={{
-          minHeight: '88px',
-          minWidth: '210px'
-        }}
+        className="px-12 py-4 text-white rounded-xl font-bold hover:opacity-90 transition-opacity absolute top-8 right-8 text-2xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{ backgroundColor: '#DC2626' }}
       >
-        Voltar
+        Cancelar
       </button>
 
       {erro && (
@@ -324,16 +318,17 @@ const FinalizarProducao = () => {
       )}
 
       <div className="w-full max-w-4xl flex flex-col items-center justify-center gap-8">
-        <div className="flex flex-col items-center justify-center">
-          <label className="block text-gray-700 text-4xl font-bold text-center">
-            INFORME A QUANTIDADE DE CADA PEÇA PRODUZIDA
-          </label>
+        <div className="w-full">
+          <div className="w-full">
+            <label className="block text-gray-700 text-4xl font-bold text-center">
+              INFORME A QUANTIDADE DE CADA PEÇA PRODUZIDA
+            </label>
+          </div>
           {pecasFluxo.length > 0 && (
             <p className="text-4xl text-blue-700 text-center mt-3 font-semibold">
               Peça {Math.min(indicePecaAtual + 1, pecasFluxo.length)} de {pecasFluxo.length}
             </p>
           )}
-         
         </div>
 
         <div className="flex items-center justify-center gap-8">

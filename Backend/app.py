@@ -49,6 +49,7 @@ def registrar_dispositivo_local_ao_iniciar():
         connection.execute(text("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS nome VARCHAR(255)"))
         connection.execute(text("UPDATE operacoes SET nome = COALESCE(NULLIF(nome, ''), 'Operação sem nome')"))
         connection.execute(text("ALTER TABLE registros_producao ADD COLUMN IF NOT EXISTS comentario TEXT"))
+        connection.execute(text("ALTER TABLE registros_producao ADD COLUMN IF NOT EXISTS quantidade INTEGER"))
 
     db = SessionLocal()
     try:

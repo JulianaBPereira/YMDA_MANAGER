@@ -16,6 +16,7 @@ class RegistroProducao(Base):
     horario_inicio = Column(Time)
     horario_fim = Column(Time)
     comentario = Column(Text, nullable=True)
+    quantidade = Column(Integer, nullable=True)
 
     funcionario = relationship(
         "Funcionario", 

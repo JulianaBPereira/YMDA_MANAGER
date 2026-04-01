@@ -35,7 +35,10 @@ class RegistroProducaoService:
 		r.modelo = getattr(modelo, "nome", None) if modelo else None
 		r.peca = getattr(pecas[0], "nome", None) if pecas else None
 		r.codigo_producao = getattr(pecas[0], "codigo", None) if pecas else None
-		r.quantidade = len(pecas) if pecas else 0
+		# Quantidade deve refletir o valor digitado pelo operador.
+		# Fallback para legado: quando não houver valor salvo, usa quantidade de peças da operação.
+		quantidade_registrada = getattr(r, "quantidade", None)
+		r.quantidade = quantidade_registrada if quantidade_registrada is not None else (len(pecas) if pecas else 0)
 		r.totem = getattr(dispositivo, "serial_number", None) if dispositivo else None
 		r.comentario = getattr(r, "comentario", None)
 
@@ -66,6 +69,7 @@ class RegistroProducaoService:
 		horario_inicio: Optional[time] = None,
 		horario_fim: Optional[time] = None,
 		comentario: Optional[str] = None,
+		quantidade: Optional[int] = None,
 	) -> RegistroProducao:
 		if funcionario_id <= 0 or operacao_id <= 0:
 			raise ValueError("funcionario_id e operacao_id devem ser positivos.")
@@ -92,12 +96,20 @@ class RegistroProducaoService:
 			horario_inicio=horario_inicio,
 			horario_fim=horario_fim,
 			comentario=comentario,
+			quantidade=quantidade,
 		)
 		self._enriquecer(registro)
 		return registro
 
-	def finalizar(self, registro_id: int, data_fim: date, horario_fim: time, comentario: Optional[str] = None) -> RegistroProducao:
-		registro = self.dao.finalizar(registro_id, data_fim, horario_fim, comentario)
+	def finalizar(
+		self,
+		registro_id: int,
+		data_fim: date,
+		horario_fim: time,
+		comentario: Optional[str] = None,
+		quantidade: Optional[int] = None,
+	) -> RegistroProducao:
+		registro = self.dao.finalizar(registro_id, data_fim, horario_fim, comentario, quantidade)
 		if registro is None:
 			raise ValueError("Registro não encontrado.")
 		self._enriquecer(registro)

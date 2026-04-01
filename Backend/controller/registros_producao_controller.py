@@ -152,6 +152,7 @@ def criar(body: RegistroCreate, db: Session = Depends(get_db)):
 			horario_inicio=body.horario_inicio,
 			horario_fim=body.horario_fim,
 			comentario=body.comentario,
+			quantidade=body.quantidade,
 		)
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
@@ -171,7 +172,7 @@ def atualizar_comentario(registro_id: int, body: RegistroComentarioUpdate, db: S
 async def finalizar(registro_id: int, body: RegistroFinalizar, db: Session = Depends(get_db)):
 	service = RegistroProducaoService(RegistroProducaoDAO(db))
 	try:
-		registro = service.finalizar(registro_id, body.data_fim, body.horario_fim, body.comentario)
+		registro = service.finalizar(registro_id, body.data_fim, body.horario_fim, body.comentario, body.quantidade)
 		posto_nome = None
 		if getattr(registro, "operacao", None) and getattr(registro.operacao, "posto", None):
 			posto_nome = registro.operacao.posto.nome
