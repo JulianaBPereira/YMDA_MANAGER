@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 import MenuLateral from '../Components/MenuLateral/MenuLateral';
 import TopBar from '../Components/topBar/TopBar';
+import { dashboardAPI, getDashboardWebSocketUrl } from '../api/api';
 
 
 interface CardProps {
@@ -25,6 +26,37 @@ interface Sublinha {
   postos: CardProps[];
 }
 
+interface OperacaoAberta {
+  registro_id: number;
+  operacao_id: number;
+  operacao_nome: string;
+  produto: string;
+  modelo: string;
+  peca_nome: string;
+  codigo?: string | null;
+  operador: string;
+  turno?: string | null;
+  comentario?: string | null;
+  funcionario_habilitado: boolean;
+  funcionario_matricula: string;
+  hora_inicio?: string | null;
+  data_inicio?: string | null;
+}
+
+interface DashboardPostoAPI {
+  posto_id: number;
+  posto: string;
+  ativo: boolean;
+  status: string;
+  operacao_aberta: OperacaoAberta | null;
+}
+
+interface DashboardSublinhaAPI {
+  sublinha_id: number;
+  nome: string;
+  postos: DashboardPostoAPI[];
+}
+
 interface DashboardCardProps {
   posto: string;
   mod: string;
@@ -36,6 +68,8 @@ interface DashboardCardProps {
   operacao_nome?: string;
   comentario?: string;
   comentario_aviso?: string;
+  registro_id?: number;
+  onEnviarComentario?: (registroId: number, comentario: string) => Promise<void>;
 }
 
 const Card = ({
@@ -49,43 +83,92 @@ const Card = ({
   operacao_nome,
   comentario,
   comentario_aviso,
+  registro_id,
+  onEnviarComentario,
 }: DashboardCardProps) => {
-  const statusAtivo = habilitado !== false;
-  const statusTexto = statusAtivo ? 'Habilitado' : 'Desabilitado';
-  const quantidadeTexto = `${qtd_real || 0} pcs / ${peca_nome || mod || 'sem modelo'}`;
+  const [comentarioInput, setComentarioInput] = useState(comentario || '');
+  const [salvandoComentario, setSalvandoComentario] = useState(false);
+  const [erroComentario, setErroComentario] = useState('');
+
+  useEffect(() => {
+    setComentarioInput(comentario || '');
+    setErroComentario('');
+  }, [comentario, registro_id]);
+
+  const mostrarStatus = habilitado !== null;
+  const statusAtivo = habilitado === true;
+  const statusTexto = statusAtivo ? 'Habilitado' : 'Nao habilitado';
+  const pecaModeloTexto = `${peca_nome || 'Sem peca'} / ${mod || 'Sem modelo'}`;
 
   return (
     <article className="overflow-hidden rounded border border-[#d3d6dc] bg-[#f4f5f7] shadow-sm">
       <header className="flex items-center justify-between border-b border-[#6c8fb4] bg-[#5b83b2] px-2 py-1">
         <h3 className="text-[11px] font-semibold text-white">{posto}</h3>
-        <span className="flex items-center gap-1 text-[10px] text-white/95">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${statusAtivo ? 'bg-orange-300' : 'bg-red-300'}`}
-          />
-          {statusTexto}
-        </span>
+        {mostrarStatus ? (
+          <span className="flex items-center gap-1 text-[10px] text-white/95">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${statusAtivo ? 'bg-emerald-300' : 'bg-red-300'}`}
+            />
+            {statusTexto}
+          </span>
+        ) : (
+          <span />
+        )}
       </header>
 
       <div className="space-y-1 p-1.5">
         <div className="grid grid-cols-2 gap-1">
           <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
-            <p className="mb-0.5 text-[9px] text-gray-500">Quantidade</p>
-            <p className="text-[10px] font-medium text-gray-700">{quantidadeTexto}</p>
+            <p className="mb-0.5 text-[9px] text-gray-500">Peca / Modelo</p>
+            <p className="text-[10px] font-medium text-gray-700">{pecaModeloTexto}</p>
           </div>
 
           <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
-            <p className="mb-0.5 text-[9px] text-gray-500">Operador</p>
-            <p className="text-[10px] font-medium text-gray-700">{operador || 'Sem operador'}</p>
+            <p className="mb-0.5 text-[9px] text-gray-500">Operacao</p>
+            <p className="text-[10px] font-medium text-gray-700">{operacao_nome || 'Sem operacao'}</p>
           </div>
         </div>
 
-        <div className="rounded border border-[#d9dce2] bg-white px-1.5 py-1 text-[10px] text-gray-600">
-          {operacao_nome || turno || 'Nao definido'}
+        <div className="grid grid-cols-2 gap-1">
+          <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
+            <p className="mb-0.5 text-[9px] text-gray-500">Funcionario</p>
+            <p className="text-[10px] font-medium text-gray-700">{operador || '-'}</p>
+          </div>
+
+          <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
+            <p className="mb-0.5 text-[9px] text-gray-500">Turno</p>
+            <p className="text-[10px] font-medium text-gray-700">{turno || 'Sem turno cadastrado'}</p>
+          </div>
         </div>
 
-        <div className="rounded border border-[#d9dce2] bg-white px-1.5 py-1 text-[10px] text-gray-600">
-          {comentario_aviso || comentario || 'Comentario...'}
-        </div>
+        <input
+          type="text"
+          value={comentarioInput}
+          onChange={(e) => setComentarioInput(e.target.value)}
+          onKeyDown={async (e) => {
+            if (e.key !== 'Enter' || salvandoComentario) return;
+            e.preventDefault();
+            if (!registro_id || !onEnviarComentario) return;
+            try {
+              setSalvandoComentario(true);
+              setErroComentario('');
+              await onEnviarComentario(registro_id, comentarioInput);
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Falha ao salvar comentario';
+              setErroComentario(message);
+            } finally {
+              setSalvandoComentario(false);
+            }
+          }}
+          disabled={!registro_id || salvandoComentario}
+          placeholder={registro_id ? (salvandoComentario ? 'Salvando comentario...' : 'Comentario (Enter para salvar)') : ''}
+          className="w-full rounded border border-[#d9dce2] bg-white px-1.5 py-1 text-[10px] text-gray-700 outline-none disabled:border-transparent disabled:bg-transparent"
+        />
+        {erroComentario && (
+          <p className="rounded border border-red-200 bg-red-50 px-1.5 py-1 text-[10px] text-red-600">
+            {erroComentario}
+          </p>
+        )}
       </div>
     </article>
   );
@@ -96,126 +179,30 @@ const SUBLINHAS_FIXAS: Sublinha[] = [
     sublinha_id: 1,
     nome: 'SUBLINHA 1',
     postos: [
-      {
-        posto_id: 1,
-        posto: 'POSTO 1',
-        mod: 'MOD 01',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 2,
-        posto: 'POSTO 2',
-        mod: 'MOD 02',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 3,
-        posto: 'POSTO 3',
-        mod: 'MOD 03',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 4,
-        posto: 'POSTO 4',
-        mod: 'MOD 04',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
+      { posto_id: 1, posto: 'POSTO 1', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 2, posto: 'POSTO 2', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 3, posto: 'POSTO 3', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 4, posto: 'POSTO 4', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
     ],
   },
   {
     sublinha_id: 2,
     nome: 'SUBLINHA 2',
     postos: [
-      {
-        posto_id: 5,
-        posto: 'POSTO 5',
-        mod: 'MOD 05',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 6,
-        posto: 'POSTO 6',
-        mod: 'MOD 06',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 7,
-        posto: 'POSTO 7',
-        mod: 'MOD 07',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 8,
-        posto: 'POSTO 8',
-        mod: 'MOD 08',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
+      { posto_id: 5, posto: 'POSTO 5', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 6, posto: 'POSTO 6', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 7, posto: 'POSTO 7', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 8, posto: 'POSTO 8', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
     ],
   },
   {
     sublinha_id: 3,
     nome: 'SUBLINHA 3',
     postos: [
-      {
-        posto_id: 9,
-        posto: 'POSTO 9',
-        mod: 'MOD 09',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 10,
-        posto: 'POSTO 10',
-        mod: 'MOD 10',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 11,
-        posto: 'POSTO 11',
-        mod: 'MOD 11',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
-      {
-        posto_id: 12,
-        posto: 'POSTO 12',
-        mod: 'MOD 12',
-        peca_nome: 'Sem peca',
-        qtd_real: 0,
-        operador: '',
-        habilitado: true,
-      },
+      { posto_id: 9, posto: 'POSTO 9', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 10, posto: 'POSTO 10', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 11, posto: 'POSTO 11', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
+      { posto_id: 12, posto: 'POSTO 12', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
     ],
   },
 ];
@@ -229,16 +216,91 @@ const Dashboard = () => {
   const [selectAberto, setSelectAberto] = useState(false);
   const [sublinhas, setSublinhas] = useState<Sublinha[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState<string>('');
 
-  // Removido: WebSocket e chamadas ao backend antigo
-  useEffect(() => {
-    setCarregando(false);
-    setSublinhas([]);
+  const normalizarPosto = (valor: string) =>
+    (valor || '').trim().toUpperCase().replace(/\s+/g, ' ');
+
+  const mapearSublinhas = (dados: DashboardSublinhaAPI[]): Sublinha[] => {
+    return (dados || []).map((s) => ({
+      sublinha_id: s.sublinha_id,
+      nome: s.nome,
+      postos: (s.postos || []).map((p) => ({
+        posto_id: p.posto_id,
+        posto: p.posto,
+        mod: p.operacao_aberta?.modelo || 'Sem modelo',
+        peca_nome: p.operacao_aberta?.peca_nome || 'Sem peca',
+        qtd_real: p.operacao_aberta ? 1 : 0,
+        operador: p.operacao_aberta?.operador || '',
+        turno: p.operacao_aberta?.turno || undefined,
+        comentario: p.operacao_aberta?.comentario || '',
+        habilitado: p.operacao_aberta ? Boolean(p.operacao_aberta.funcionario_habilitado) : null,
+        operacao_nome: p.operacao_aberta?.operacao_nome || 'Livre',
+        comentario_aviso: p.status,
+        registro_id: p.operacao_aberta?.registro_id,
+      })),
+    }));
+  };
+
+  const mesclarComLayoutFixo = (dinamicas: Sublinha[]): Sublinha[] => {
+    const mapaPostosPorId = new Map<number, CardProps>();
+    const mapaPostosPorNome = new Map<string, CardProps>();
+    dinamicas.forEach((s) => {
+      s.postos.forEach((p) => {
+        mapaPostosPorId.set(p.posto_id, p);
+        mapaPostosPorNome.set(normalizarPosto(p.posto), p);
+      });
+    });
+
+    return SUBLINHAS_FIXAS.map((sublinhaBase) => ({
+      ...sublinhaBase,
+      postos: sublinhaBase.postos.map((postoBase) => {
+        const dinamico =
+          mapaPostosPorId.get(postoBase.posto_id) ||
+          mapaPostosPorNome.get(normalizarPosto(postoBase.posto));
+        return dinamico ? { ...postoBase, ...dinamico } : postoBase;
+      }),
+    }));
+  };
+
+  const carregarDashboard = useCallback(async () => {
+    try {
+      setCarregando(true);
+      const response = await dashboardAPI.buscarPostosDashboard();
+      setSublinhas(mesclarComLayoutFixo(mapearSublinhas(response.sublinhas || [])));
+      setErro('');
+    } catch (error: any) {
+      setSublinhas(SUBLINHAS_FIXAS);
+      setErro(error?.message || 'Falha ao carregar dashboard');
+    } finally {
+      setCarregando(false);
+    }
   }, []);
 
-  const sublinhasExibidas = sublinhas.length > 0 ? sublinhas : SUBLINHAS_FIXAS;
+  const enviarComentario = useCallback(async (registroId: number, comentario: string) => {
+    await dashboardAPI.atualizarComentario(registroId, comentario);
+    await carregarDashboard();
+  }, [carregarDashboard]);
 
-  // Removido: funções que chamavam o backend antigo
+  useEffect(() => {
+    carregarDashboard();
+
+    const ws = new WebSocket(getDashboardWebSocketUrl());
+    ws.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload?.type === 'dashboard_refresh') {
+          carregarDashboard();
+        }
+      } catch {
+        // ignorar mensagens inválidas
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [carregarDashboard]);
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
@@ -322,7 +384,13 @@ const Dashboard = () => {
               <p className="text-gray-600">Carregando dados do dashboard...</p>
             </div>
           ) : (
-            sublinhasExibidas.map((sublinha) => (
+            <>
+              {erro && (
+                <div className="text-center py-2 mb-4">
+                  <p className="text-red-600 text-sm">{erro}</p>
+                </div>
+              )}
+              {sublinhas.map((sublinha) => (
               <div key={sublinha.sublinha_id} className="mb-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-3">{sublinha.nome}</h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -340,11 +408,13 @@ const Dashboard = () => {
                       comentario={item.comentario}
                       comentario_aviso={item.comentario_aviso}
                       registro_id={item.registro_id}
+                      onEnviarComentario={enviarComentario}
                     />
                   ))}
                 </div>
               </div>
-            ))
+              ))}
+            </>
           )}
         </main>
       </div>

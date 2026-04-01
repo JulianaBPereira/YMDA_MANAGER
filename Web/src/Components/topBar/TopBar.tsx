@@ -9,6 +9,7 @@ const TopBar = () => {
     const getPageName = () => {
         const routeMap: { [key: string]: string } = {
             '/': 'Dashboard',
+            '/IHM': 'Login IHM',
             '/login': 'Login',
             '/admin': 'Login Admin',
             '/cadastro-usuario': 'Cadastro de Usuario',
@@ -62,7 +63,7 @@ const TopBar = () => {
                         <button
                             onClick={() => {
                                 logout();
-                                navigate('/login');
+                                navigate('/IHM');
                             }}
                             className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md text-sm font-medium transition-colors whitespace-nowrap min-h-9 cursor-pointer hover:opacity-90"
                             style={{ 

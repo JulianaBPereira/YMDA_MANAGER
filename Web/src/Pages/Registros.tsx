@@ -133,6 +133,17 @@ const Registros = () => {
                     hora_inicio: r.horario_inicio || undefined,
                     hora_fim: r.horario_fim || undefined,
                     turno: r.turno || undefined,
+                    operador: r.operador || undefined,
+                    matricula: r.matricula || undefined,
+                    posto: r.posto || undefined,
+                    operacao: r.operacao || undefined,
+                    produto: r.produto || undefined,
+                    modelo: r.modelo || undefined,
+                    peca: r.peca || undefined,
+                    codigo_producao: r.codigo_producao || undefined,
+                    quantidade: r.quantidade ?? undefined,
+                    totem: r.totem || undefined,
+                    comentarios: r.comentario || undefined,
                 }))
                 setRegistros(mapped)
                 setTotalRegistros(mapped.length)

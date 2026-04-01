@@ -10,6 +10,17 @@ export interface RegistroProducao {
     horario_fim?: string | null
     criado_em?: string
     turno?: string | null
+    operador?: string | null
+    matricula?: string | null
+    posto?: string | null
+    operacao?: string | null
+    produto?: string | null
+    modelo?: string | null
+    peca?: string | null
+    codigo_producao?: string | null
+    quantidade?: number | null
+    totem?: string | null
+    comentario?: string | null
 }
 
 export interface CriarRegistroData {
@@ -24,6 +35,11 @@ export interface CriarRegistroData {
 export interface FinalizarRegistroData {
     data_fim: string
     horario_fim: string
+    comentario?: string | null
+}
+
+export interface AtualizarComentarioRegistroData {
+    comentario?: string | null
 }
 
 export async function listarRegistros(): Promise<RegistroProducao[]> {
@@ -54,5 +70,12 @@ export async function finalizarRegistro(id: number, data: FinalizarRegistroData)
 
 export async function deletarRegistro(id: number): Promise<void> {
     await fetchAPI(`/registros-producao/${id}`, { method: 'DELETE' })
+}
+
+export async function atualizarComentarioRegistro(id: number, data: AtualizarComentarioRegistroData): Promise<RegistroProducao> {
+    return await fetchAPI(`/registros-producao/${id}/comentario`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    })
 }
 

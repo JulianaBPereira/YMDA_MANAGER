@@ -66,16 +66,19 @@ const ListagemProdutosModelos = () => {
                 listarModelos(),
             ])
 
+            const produtosOrdenados = [...(produtosResp as ProdutoApi[])].sort((a, b) => b.id - a.id)
+            const modelosOrdenados = [...(modelosResp as ModeloApi[])].sort((a, b) => b.id - a.id)
+
             // Agrupar modelos por produto_id
             const modelosPorProduto = new Map<number, Modelo[]>()
-            for (const m of modelosResp as ModeloApi[]) {
+            for (const m of modelosOrdenados) {
                 if (!m.produto_id) continue
                 const arr = modelosPorProduto.get(m.produto_id) ?? []
                 arr.push({ id: m.id, nome: m.nome, produto_id: m.produto_id, data_criacao: m.data_criacao })
                 modelosPorProduto.set(m.produto_id, arr)
             }
 
-            const produtosComModelos: Produto[] = (produtosResp as ProdutoApi[]).map(p => ({
+            const produtosComModelos: Produto[] = produtosOrdenados.map(p => ({
                 id: p.id,
                 nome: p.nome,
                 data_criacao: p.data_criacao,
@@ -83,9 +86,9 @@ const ListagemProdutosModelos = () => {
             }))
 
             produtosCache = produtosComModelos
-            modelosCache = modelosResp as Modelo[]
+            modelosCache = modelosOrdenados as Modelo[]
             setProdutos(produtosComModelos)
-            setModelos(modelosResp as Modelo[])
+            setModelos(modelosOrdenados as Modelo[])
         } catch (err) {
             setErro(err instanceof Error ? err.message : 'Erro ao carregar dados')
         } finally {

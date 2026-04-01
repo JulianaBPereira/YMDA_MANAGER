@@ -62,6 +62,18 @@ class FuncionarioService:
             raise ValueError("Funcionário não encontrado.")
         return funcionario
 
+    def buscar_por_tag(self, tag: str):
+        if not tag or not tag.strip():
+            raise ValueError("Tag inválida.")
+
+        self.dao.limpar_tags_expiradas()
+        funcionario = self.dao.buscar_por_tag(tag.strip())
+        if not funcionario:
+            raise ValueError("Funcionário não encontrado para a tag informada.")
+        if not funcionario.ativo:
+            raise ValueError("Funcionário inativo.")
+        return funcionario
+
     # ──────────────────────────────────────────────
     # Tag temporária — regras de negócio
     # ──────────────────────────────────────────────

@@ -2,6 +2,12 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/api`
     : `http://${window.location.hostname}:8001/api`
 
+export function getDashboardWebSocketUrl() {
+    const configured = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8001`
+    const wsBase = configured.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:')
+    return `${wsBase}/api/registros-producao/ws/dashboard`
+}
+
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     let usuarioId: string | null = null
     try {
@@ -60,4 +66,59 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     }
 
     return isJson ? data : {}
+}
+
+export const ihmAPI = {
+    async validarRfid(codigo: string) {
+        return await fetchAPI(`/ihm/rfid/${encodeURIComponent(codigo)}`)
+    },
+    async buscarContextoOperacao(operador: string) {
+        return await fetchAPI(`/ihm/contexto-operacao/${encodeURIComponent(operador)}`)
+    },
+}
+
+export const producaoAPI = {
+    async buscarRegistroAberto(posto: string, funcionario_matricula: string) {
+        const params = new URLSearchParams({
+            posto,
+            funcionario_matricula,
+        })
+        return await fetchAPI(`/ihm/producao/registro-aberto?${params.toString()}`)
+    },
+    async registrarEntrada(payload: {
+        posto?: string
+        funcionario_matricula: string
+        modelo_codigo?: string
+        operacao?: string
+        peca?: string
+        codigo?: string
+    }) {
+        return await fetchAPI('/ihm/producao/entrada', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        })
+    },
+    async registrarSaida(payload: {
+        posto?: string
+        funcionario_matricula?: string
+        registro_id?: number
+        quantidade?: number
+    }) {
+        return await fetchAPI('/ihm/producao/saida', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        })
+    },
+}
+
+export const dashboardAPI = {
+    async buscarPostosDashboard() {
+        return await fetchAPI('/registros-producao/dashboard/postos')
+    },
+    async atualizarComentario(registroId: number, comentario: string) {
+        return await fetchAPI(`/registros-producao/${registroId}/comentario`, {
+            method: 'PUT',
+            body: JSON.stringify({ comentario }),
+        })
+    },
 }

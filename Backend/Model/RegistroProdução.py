@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Date, Time, ForeignKey
+from sqlalchemy import Column, Integer, Date, Time, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from ..Database.database import Base
 
@@ -15,6 +15,7 @@ class RegistroProducao(Base):
     data_fim = Column(Date)
     horario_inicio = Column(Time)
     horario_fim = Column(Time)
+    comentario = Column(Text, nullable=True)
 
     funcionario = relationship(
         "Funcionario", 

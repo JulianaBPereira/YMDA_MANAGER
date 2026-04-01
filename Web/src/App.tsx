@@ -14,13 +14,18 @@ import ListagemProdutosModelos from "./Pages/ListagemProdutosModelos";
 import CadastroUsuario from "./Pages/CadastroUsuario";
 import DispositivosRaspberry from "./Pages/DispositivosRaspberry";
 import ProdutosModelos from "./Pages/ProdutosModelos";
+import LeitorIHM from "./Pages/IHM/Leitor";
+import OperacaoIHM from "./Pages/IHM/Operacao";
+import LeitorFinalizarIHM from "./Pages/IHM/LeitorFinalizar";
+import FinalizarProducaoIHM from "./Pages/IHM/FinalizarProducao";
 
 
 function App() {
   return (
     <Routes>
       {/* Rotas públicas */}
-      <Route path="/login" element={<Login />} />
+      <Route path="/IHM" element={<Login />} />
+      <Route path="/login" element={<Navigate to="/IHM" replace />} />
       <Route path="/admin" element={<LoginAdmin />} />
       <Route path="/cadastro-usuario" element={<CadastroUsuario />} />
       
@@ -110,6 +115,38 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'master']}>
             <DispositivosRaspberry />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ihm/leitor"
+        element={
+          <ProtectedRoute allowedRoles={['operador']}>
+            <LeitorIHM />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ihm/operacao"
+        element={
+          <ProtectedRoute allowedRoles={['operador']}>
+            <OperacaoIHM />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ihm/leitor-finalizar"
+        element={
+          <ProtectedRoute allowedRoles={['operador']}>
+            <LeitorFinalizarIHM />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ihm/finalizar-producao"
+        element={
+          <ProtectedRoute allowedRoles={['operador']}>
+            <FinalizarProducaoIHM />
           </ProtectedRoute>
         }
       />

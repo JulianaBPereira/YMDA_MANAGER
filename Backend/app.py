@@ -11,6 +11,7 @@ from .Controller.operacoes_controller import router as operacoes_router
 from .Controller.postos_controller import router as postos_router
 from .Controller.turnos_controller import router as turnos_router
 from .Controller.usuarios_controller import router as usuarios_router
+from .Controller.ihm_controller import router as ihm_router
 from .Database.database import SessionLocal, engine
 from .DAO.dispositvos_dao import DispositivosDAO
 from .Services.dispositivos_service import DispositivosService
@@ -39,6 +40,7 @@ app.include_router(operacoes_router, prefix="/api")
 app.include_router(postos_router, prefix="/api")
 app.include_router(turnos_router, prefix="/api")
 app.include_router(usuarios_router, prefix="/api")
+app.include_router(ihm_router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -46,6 +48,7 @@ def registrar_dispositivo_local_ao_iniciar():
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS nome VARCHAR(255)"))
         connection.execute(text("UPDATE operacoes SET nome = COALESCE(NULLIF(nome, ''), 'Operação sem nome')"))
+        connection.execute(text("ALTER TABLE registros_producao ADD COLUMN IF NOT EXISTS comentario TEXT"))
 
     db = SessionLocal()
     try:

@@ -136,6 +136,16 @@ const ListagemPecas = () => {
                 return
             }
 
+            const codigoNormalizado = codigo.toLowerCase()
+            const pecaDuplicada = pecas.find(
+                (peca) => peca.id !== pecaEditando.id && peca.codigo.trim().toLowerCase() === codigoNormalizado
+            )
+            if (pecaDuplicada) {
+                setMensagemErroDuplicado('Já existe uma peça cadastrada com esse código.')
+                setModalErroDuplicado(true)
+                return
+            }
+
             await atualizarPeca(pecaEditando.id, { nome, codigo })
             setModalEdicaoAberto(false)
             setPecaEditando(null)
@@ -143,7 +153,13 @@ const ListagemPecas = () => {
             setModalSucessoAberto(true)
             await carregarDados()
         } catch (err) {
-            setErro(err instanceof Error ? err.message : 'Erro ao salvar peça')
+            const mensagem = err instanceof Error ? err.message : 'Erro ao salvar peça'
+            if (/ja existe uma peca cadastrada com esse codigo|codigo.*ja existe|duplicad/i.test(mensagem)) {
+                setMensagemErroDuplicado('Já existe uma peça cadastrada com esse código.')
+                setModalErroDuplicado(true)
+                return
+            }
+            setErro(mensagem)
         }
     }
 
