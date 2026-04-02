@@ -24,6 +24,11 @@ class RegistroProducaoService:
 		r.matricula = getattr(funcionario, "matricula", None) if funcionario else None
 		r.operacao_nome = getattr(operacao, "nome", None) if operacao else None
 
+		sublinha = getattr(operacao, "sublinha", None) if operacao else None
+		linha = getattr(sublinha, "linha", None) if sublinha else None
+		r.sublinha = getattr(sublinha, "nome", None) if sublinha else None
+		r.linha = getattr(linha, "nome", None) if linha else None
+
 		posto = getattr(operacao, "posto", None) if operacao else None
 		produto = getattr(operacao, "produto", None) if operacao else None
 		modelo = getattr(operacao, "modelo", None) if operacao else None
@@ -35,10 +40,10 @@ class RegistroProducaoService:
 		r.modelo = getattr(modelo, "nome", None) if modelo else None
 		r.peca = getattr(pecas[0], "nome", None) if pecas else None
 		r.codigo_producao = getattr(pecas[0], "codigo", None) if pecas else None
-		# Quantidade deve refletir o valor digitado pelo operador.
-		# Fallback para legado: quando não houver valor salvo, usa quantidade de peças da operação.
+		# Quantidade deve refletir o valor digitado pelo operador no registro.
+		# Se não houver valor salvo, retorna 0 (evita "None" e evita números incorretos).
 		quantidade_registrada = getattr(r, "quantidade", None)
-		r.quantidade = quantidade_registrada if quantidade_registrada is not None else (len(pecas) if pecas else 0)
+		r.quantidade = quantidade_registrada if quantidade_registrada is not None else 0
 		r.totem = getattr(dispositivo, "serial_number", None) if dispositivo else None
 		r.comentario = getattr(r, "comentario", None)
 

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..Model.RegistroProdução import RegistroProducao
 from ..Model.Funcionarios import Funcionario
 from ..Model.Operacoes import Operacao
+from ..Model.Linhas import Sublinha
 
 class RegistroProducaoDAO:
 
@@ -41,7 +42,13 @@ class RegistroProducaoDAO:
         return (
             self.db.query(RegistroProducao)
             .options(
-                joinedload(RegistroProducao.funcionario).joinedload(Funcionario.turnos)
+                joinedload(RegistroProducao.funcionario).joinedload(Funcionario.turnos),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.posto),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.produto),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.modelo),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.sublinha).joinedload(Sublinha.linha),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.dispositivo),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.pecas),
             )
             .filter(RegistroProducao.id == registro_id)
             .first()
@@ -55,6 +62,8 @@ class RegistroProducaoDAO:
                 joinedload(RegistroProducao.operacao).joinedload(Operacao.posto),
                 joinedload(RegistroProducao.operacao).joinedload(Operacao.produto),
                 joinedload(RegistroProducao.operacao).joinedload(Operacao.modelo),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.sublinha).joinedload(Sublinha.linha),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.dispositivo),
                 joinedload(RegistroProducao.operacao).joinedload(Operacao.pecas),
             )
             .order_by(RegistroProducao.id.desc())
@@ -67,7 +76,13 @@ class RegistroProducaoDAO:
         return (
             self.db.query(RegistroProducao)
             .options(
-                joinedload(RegistroProducao.funcionario).joinedload(Funcionario.turnos)
+                joinedload(RegistroProducao.funcionario).joinedload(Funcionario.turnos),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.posto),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.produto),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.modelo),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.sublinha).joinedload(Sublinha.linha),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.dispositivo),
+                joinedload(RegistroProducao.operacao).joinedload(Operacao.pecas),
             )
             .filter(
                 (RegistroProducao.data_fim.is_(None))

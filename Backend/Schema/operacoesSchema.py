@@ -34,7 +34,7 @@ class OperacaoResponse(BaseModel):
     id: int
     nome: str
     sublinha_id: int
-    posto_id: int
+    posto_id: Optional[int] = None
     produto_id: int
     modelo_id: int
     dispositivo_id: Optional[int] = None

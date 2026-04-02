@@ -15,6 +15,8 @@ interface Registro {
     hora?: string
     operador?: string
     matricula?: string
+    linha?: string
+    sublinha?: string
     posto?: string
     totem?: string
     produto?: string
@@ -135,6 +137,8 @@ const Registros = () => {
                     turno: r.turno || undefined,
                     operador: r.operador || undefined,
                     matricula: r.matricula || undefined,
+                    linha: r.linha || undefined,
+                    sublinha: r.sublinha || undefined,
                     posto: r.posto || undefined,
                     operacao: r.operacao || undefined,
                     produto: r.produto || undefined,
@@ -247,6 +251,8 @@ const Registros = () => {
         const headers = [
             'Totem', 
             'Posto', 
+            'Linha',
+            'Sublinha',
             'Operação', 
             'Habilitado',
             'Operador', 
@@ -266,6 +272,8 @@ const Registros = () => {
         const rows = registrosParaExportar.map(reg => [
             reg.totem || '',
             reg.posto || '',
+            reg.linha || '',
+            reg.sublinha || '',
             reg.operacao || '',
             reg.habilitado ? 'Sim' : 'Não',
             reg.operador || '',
@@ -290,6 +298,8 @@ const Registros = () => {
         ws['!cols'] = [
             { wch: 12 }, // Totem
             { wch: 15 }, // Posto
+            { wch: 16 }, // Linha
+            { wch: 18 }, // Sublinha
             { wch: 15 }, // Operação
             { wch: 12 }, // Habilitado
             { wch: 20 }, // Operador
@@ -524,6 +534,12 @@ const Registros = () => {
                                                         Posto
                                                     </th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Linha
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Sublinha
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                         Operação
                                                     </th>
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -583,6 +599,12 @@ const Registros = () => {
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                             {registro.posto || '-'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {registro.linha || '-'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {registro.sublinha || '-'}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                             {registro.operacao || '-'}

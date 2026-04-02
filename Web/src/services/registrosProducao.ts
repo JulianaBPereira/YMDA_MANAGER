@@ -12,6 +12,8 @@ export interface RegistroProducao {
     turno?: string | null
     operador?: string | null
     matricula?: string | null
+    linha?: string | null
+    sublinha?: string | null
     posto?: string | null
     operacao?: string | null
     produto?: string | null

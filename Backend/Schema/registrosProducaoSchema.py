@@ -45,6 +45,8 @@ class RegistroResponse(BaseModel):
 	turno: Optional[str] = None
 	operador: Optional[str] = None
 	matricula: Optional[str] = None
+	linha: Optional[str] = None
+	sublinha: Optional[str] = None
 	posto: Optional[str] = None
 	operacao: Optional[str] = Field(default=None, validation_alias=AliasChoices("operacao_nome", "operacao"))
 	produto: Optional[str] = None

@@ -1,6 +1,7 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 from ..Database.database import get_db
 from ..DAO.RegistroProducao_dao import RegistroProducaoDAO
 from ..Services.registros_producao_service import RegistroProducaoService
@@ -56,10 +57,14 @@ def listar_dashboard_postos(db: Session = Depends(get_db)):
 	)
 
 	registros_abertos = (
-		db.query(RegistroProducao, Operacao, Funcionario, Posto)
-		.join(Operacao, RegistroProducao.operacao_id == Operacao.id)
-		.join(Posto, Operacao.posto_id == Posto.id)
-		.join(Funcionario, RegistroProducao.funcionario_id == Funcionario.id)
+		db.query(RegistroProducao)
+		.options(
+			joinedload(RegistroProducao.operacao).joinedload(Operacao.posto),
+			joinedload(RegistroProducao.operacao).joinedload(Operacao.produto),
+			joinedload(RegistroProducao.operacao).joinedload(Operacao.modelo),
+			joinedload(RegistroProducao.operacao).joinedload(Operacao.pecas),
+			joinedload(RegistroProducao.funcionario),
+		)
 		.filter((RegistroProducao.data_fim.is_(None)) | (RegistroProducao.horario_fim.is_(None)))
 		.order_by(RegistroProducao.id.desc())
 		.all()
@@ -81,26 +86,39 @@ def listar_dashboard_postos(db: Session = Depends(get_db)):
 	)
 
 	registro_por_posto: dict[int, dict] = {}
-	for registro, operacao, funcionario, posto in registros_abertos:
+	for registro in registros_abertos:
+		operacao = getattr(registro, "operacao", None)
+		funcionario = getattr(registro, "funcionario", None)
+		posto = getattr(operacao, "posto", None) if operacao else None
+		if not posto:
+			continue
 		if posto.id in registro_por_posto:
 			continue
-		funcionario_habilitado = (funcionario.id, operacao.id) in operacoes_habilitadas
-		peca_nome = operacao.pecas[0].nome if operacao.pecas else "Sem peca"
-		codigo_peca = operacao.pecas[0].codigo if operacao.pecas and operacao.pecas[0].codigo else None
-		turno_nome = turnos_por_funcionario.get(funcionario.id)
+		funcionario_habilitado = (
+			bool(funcionario)
+			and bool(operacao)
+			and (funcionario.id, operacao.id) in operacoes_habilitadas
+		)
+		peca_nome = operacao.pecas[0].nome if operacao and operacao.pecas else "Sem peca"
+		codigo_peca = (
+			operacao.pecas[0].codigo
+			if operacao and operacao.pecas and operacao.pecas[0].codigo
+			else None
+		)
+		turno_nome = turnos_por_funcionario.get(funcionario.id) if funcionario else None
 		registro_por_posto[posto.id] = {
 			"registro_id": registro.id,
-			"operacao_id": operacao.id,
-			"operacao_nome": operacao.nome,
-			"produto": operacao.produto.nome if operacao.produto else "",
-			"modelo": operacao.modelo.nome if operacao.modelo else "",
+			"operacao_id": operacao.id if operacao else None,
+			"operacao_nome": operacao.nome if operacao else None,
+			"produto": operacao.produto.nome if operacao and operacao.produto else None,
+			"modelo": operacao.modelo.nome if operacao and operacao.modelo else None,
 			"peca_nome": peca_nome,
 			"codigo": codigo_peca,
-			"operador": funcionario.nome,
+			"operador": funcionario.nome if funcionario else None,
 			"turno": turno_nome,
 			"comentario": registro.comentario,
 			"funcionario_habilitado": funcionario_habilitado,
-			"funcionario_matricula": funcionario.matricula,
+			"funcionario_matricula": funcionario.matricula if funcionario else None,
 			"hora_inicio": str(registro.horario_inicio) if registro.horario_inicio else None,
 			"data_inicio": str(registro.data_inicio) if registro.data_inicio else None,
 		}
