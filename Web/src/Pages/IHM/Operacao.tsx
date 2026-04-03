@@ -339,12 +339,13 @@ const Operacao = () => {
                 preencherCamposOperacao(codigoOperacao);
               }
             }}
-            className={`w-full px-5 py-4 text-5xl border-4 rounded-lg focus:outline-none bg-white appearance-none cursor-pointer ${erroOperacao ? 'border-red-500' : 'border-gray-400 focus:border-blue-500'}`}
+            disabled={!!registroAberto}
+            className={`w-full px-5 py-4 text-5xl border-4 rounded-lg focus:outline-none appearance-none ${registroAberto ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white cursor-pointer'} ${erroOperacao ? 'border-red-500' : 'border-gray-400 focus:border-blue-500'}`}
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+              backgroundImage: registroAberto ? 'none' : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat',
               backgroundPosition: 'right 1.25rem center',
-              paddingRight: '3rem',
+              paddingRight: registroAberto ? '1.25rem' : '3rem',
               minHeight: '60px',
             }}
           >
@@ -402,12 +403,13 @@ const Operacao = () => {
                   setCodigo(pecaSelecionada.codigo || '');
                 }
               }}
-              className={`w-full px-4 py-3 text-4xl border-2 rounded-lg focus:outline-none bg-white appearance-none cursor-pointer ${erroPeca ? 'border-red-500' : 'border-gray-400 focus:border-blue-500'}`}
+              disabled={!!registroAberto}
+              className={`w-full px-4 py-3 text-4xl border-2 rounded-lg focus:outline-none appearance-none ${registroAberto ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white cursor-pointer'} ${erroPeca ? 'border-red-500' : 'border-gray-400 focus:border-blue-500'}`}
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                backgroundImage: registroAberto ? 'none' : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: 'right 1rem center',
-                paddingRight: '2.5rem',
+                paddingRight: registroAberto ? '1rem' : '2.5rem',
                 minHeight: '55px',
               }}
             >

@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Funcionarios from "./Pages/Funcionarios";
 import Registros from "./Pages/Registros";
 import Dashboard from "./Pages/Dashboard";
-import Login from "./Pages/Login";
 import LoginAdmin from "./Pages/LoginAdmin";
 import ProtectedRoute from "./Components/ProtectedRoute";
 import Linhas from "./Pages/Linhas";
@@ -14,6 +13,7 @@ import ListagemProdutosModelos from "./Pages/ListagemProdutosModelos";
 import CadastroUsuario from "./Pages/CadastroUsuario";
 import DispositivosRaspberry from "./Pages/DispositivosRaspberry";
 import ProdutosModelos from "./Pages/ProdutosModelos";
+import LoginIHM from "./Pages/IHM/LoginIHM";
 import LeitorIHM from "./Pages/IHM/Leitor";
 import OperacaoIHM from "./Pages/IHM/Operacao";
 import LeitorFinalizarIHM from "./Pages/IHM/LeitorFinalizar";
@@ -24,8 +24,10 @@ function App() {
   return (
     <Routes>
       {/* Rotas públicas */}
-      <Route path="/IHM" element={<Login />} />
-      <Route path="/login" element={<Navigate to="/IHM" replace />} />
+      <Route path="/IHM" element={<Navigate to="/ihm/login" replace />} />
+      <Route path="/ihm" element={<Navigate to="/ihm/login" replace />} />
+      <Route path="/ihm/login" element={<LoginIHM />} />
+      <Route path="/login" element={<Navigate to="/admin" replace />} />
       <Route path="/admin" element={<LoginAdmin />} />
       <Route path="/cadastro-usuario" element={<CadastroUsuario />} />
       
@@ -120,35 +122,19 @@ function App() {
       />
       <Route
         path="/ihm/leitor"
-        element={
-          <ProtectedRoute allowedRoles={['operador']}>
-            <LeitorIHM />
-          </ProtectedRoute>
-        }
+        element={<LeitorIHM />}
       />
       <Route
         path="/ihm/operacao"
-        element={
-          <ProtectedRoute allowedRoles={['operador']}>
-            <OperacaoIHM />
-          </ProtectedRoute>
-        }
+        element={<OperacaoIHM />}
       />
       <Route
         path="/ihm/leitor-finalizar"
-        element={
-          <ProtectedRoute allowedRoles={['operador']}>
-            <LeitorFinalizarIHM />
-          </ProtectedRoute>
-        }
+        element={<LeitorFinalizarIHM />}
       />
       <Route
         path="/ihm/finalizar-producao"
-        element={
-          <ProtectedRoute allowedRoles={['operador']}>
-            <FinalizarProducaoIHM />
-          </ProtectedRoute>
-        }
+        element={<FinalizarProducaoIHM />}
       />
       
       

@@ -54,3 +54,17 @@ class UsuarioService:
 
     def listar_usuarios(self):
         return self.dao.listar()
+
+    def autenticar(self, username: str, senha: str):
+        """Autentica um usuário e retorna seus dados se credenciais forem válidas"""
+        usuario = self.dao.buscar_por_username(username)
+        if not usuario:
+            raise ValueError("Usuário não encontrado")
+        
+        if not usuario.ativo:
+            raise ValueError("Usuário inativo")
+        
+        if not self.pwd_context.verify(senha, usuario.senha_hash):
+            raise ValueError("Senha incorreta")
+        
+        return usuario

@@ -6,6 +6,9 @@ const TopBar = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
     
+    // Verifica se está em rotas da IHM
+    const isIHMRoute = location.pathname.startsWith('/ihm');
+    
     const getPageName = () => {
         const routeMap: { [key: string]: string } = {
             '/': 'Dashboard',
@@ -59,11 +62,11 @@ const TopBar = () => {
                             {user.nome} ({user.role})
                         </span>
                     )}
-                    {user && (
+                    {user && !isIHMRoute && (
                         <button
                             onClick={() => {
                                 logout();
-                                navigate('/IHM');
+                                navigate('/admin');
                             }}
                             className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md text-sm font-medium transition-colors whitespace-nowrap min-h-9 cursor-pointer hover:opacity-90"
                             style={{ 

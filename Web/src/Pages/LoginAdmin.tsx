@@ -7,20 +7,15 @@ const LoginAdmin = () => {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
-  const { login, user, isOperador, isAdmin, isMaster } = useAuth();
+  const { login, user, isAdmin, isMaster } = useAuth();
   const navigate = useNavigate();
 
-  // Redireciona se já estiver logado
+  // Redireciona se já estiver logado como admin/master
   useEffect(() => {
-    if (user) {
-      if (isOperador) {
-        // Operador não pode acessar área admin, redireciona para login operador
-        setErro('Acesso restrito a administradores. Use a tela de operador.');
-      } else if (isAdmin || isMaster) {
-        navigate('/', { replace: true });
-      }
+    if (user && (isAdmin || isMaster)) {
+      navigate('/', { replace: true });
     }
-  }, [user, isOperador, isAdmin, isMaster, navigate]);
+  }, [user, isAdmin, isMaster, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +29,13 @@ const LoginAdmin = () => {
         return;
       }
 
-      await login(username.trim(), senha);
-      
+      const resultado = await login(username.trim(), senha);
+
+      // Bloquear operador no painel admin
+      if (resultado?.role === 'operador') {
+        throw new Error('Operadores devem usar o login da IHM.');
+      }
+
       // O redirecionamento será feito pelo useEffect quando o user for atualizado
     } catch (error: any) {
       setErro(error.message || 'Erro ao fazer login. Verifique suas credenciais.');

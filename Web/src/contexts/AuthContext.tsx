@@ -14,7 +14,7 @@ type AuthContextValue = {
   isOperador: boolean;
   isAdmin: boolean;
   isMaster: boolean;
-  login: (username: string, senha: string) => Promise<void>;
+  login: (username: string, senha: string) => Promise<AuthUser>;
   logout: () => void;
 };
 
@@ -37,19 +37,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (username: string, senha: string) => {
-    // Placeholder: autenticação fake apenas para permitir navegação.
-    // Integre com seu backend aqui quando disponível.
-    const fakeUser: AuthUser = {
-      id: 1,
-      username,
-      nome: username,
-      role: username.toLowerCase() === 'master' ? 'master' : username.toLowerCase() === 'operador' ? 'operador' : 'admin',
-    };
-    setUser(fakeUser);
     try {
-      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(fakeUser));
-    } catch {
-      // ignore
+      const response = await fetch(`${import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : `http://${window.location.hostname}:8001/api`}/usuarios/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, senha }),
+      });
+
+      if (!response.ok) {
+        const erro = await response.json().catch(() => ({}));
+        throw new Error(erro.detail || 'Erro ao fazer login');
+      }
+
+      const userData = await response.json();
+      const user: AuthUser = {
+        id: userData.id,
+        username: userData.username,
+        nome: userData.nome,
+        role: userData.role,
+      };
+
+      setUser(user);
+      try {
+        window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      } catch {
+        // ignore
+      }
+      return user;
+    } catch (error) {
+      throw error;
     }
   };
 

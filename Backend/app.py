@@ -54,7 +54,10 @@ def registrar_dispositivo_local_ao_iniciar():
     db = SessionLocal()
     try:
         service = DispositivosService(DispositivosDAO(db))
-        service.ensure_local_registered()
+        try:
+            service.ensure_local_registered()
+        except ValueError:
+            pass
     finally:
         db.close()
 

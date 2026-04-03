@@ -6,6 +6,9 @@ import ModalConfirmacao from '../Components/Compartilhados/ModalConfirmacao'
 import ModalErro from '../Components/Modais/ModalErro'
 import * as XLSX from 'xlsx'
 import { listarRegistros, deletarRegistro, type RegistroProducao } from '../services/registrosProducao'
+import { listarProdutos } from '../services/produtos'
+import { listarModelos } from '../services/modelos'
+import { listarFuncionarios } from '../services/funcionarios'
 
 interface Registro {
     id: number
@@ -44,6 +47,20 @@ const formatarHoraMinuto = (hora?: string | null) => {
     return hora.slice(0, 5)
 }
 
+const normalizarTexto = (valor?: string) => (valor || '').trim().toLowerCase()
+
+const montarOpcoes = (valores: Array<string | null | undefined>) => {
+    const unicos = Array.from(
+        new Set(
+            valores
+                .map(v => (v || '').trim())
+                .filter(Boolean)
+        )
+    ).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }))
+
+    return unicos.map(valor => ({ id: valor, label: valor }))
+}
+
 const Registros = () => {
     const [paginaAtual, setPaginaAtual] = useState(1)
     const [itensPorPagina, setItensPorPagina] = useState(10)
@@ -60,7 +77,8 @@ const Registros = () => {
 
     const [registros, setRegistros] = useState<Registro[]>([])
     const [registrosSelecionados, setRegistrosSelecionados] = useState<Set<number>>(new Set())
-    const [carregando, setCarregando] = useState(false)
+    const [carregando, setCarregando] = useState(true)
+    const [carregamentoInicialConcluido, setCarregamentoInicialConcluido] = useState(false)
     const [totalRegistros, setTotalRegistros] = useState(0)
     const [modalExcluirAberto, setModalExcluirAberto] = useState(false)
     const [excluindo, setExcluindo] = useState(false)
@@ -78,7 +96,7 @@ const Registros = () => {
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // Opções de filtros dinâmicas
-    const [opcoesProcesso, setOpcoesProcesso] = useState<{ id: string; label: string }[]>([])
+    const opcoesProcesso = [{ id: 'subsolda1', label: 'subsolda1' }]
     const [opcoesTurno] = useState<{ id: string; label: string }[]>([
         { id: 'Matutino', label: 'Matutino' },
         { id: 'Vespertino', label: 'Vespertino' },
@@ -98,6 +116,7 @@ const Registros = () => {
             setFiltros(prev => {
                 const proximoHorario = horarioValido ? horarioInput : ''
                 if (prev.horario === proximoHorario) return prev
+                setPaginaAtual(1)
                 return { ...prev, horario: proximoHorario }
             })
         }, 600)
@@ -108,14 +127,33 @@ const Registros = () => {
         }
     }, [horarioInput])
 
-    // Carregar opções de filtros (backend antigo removido)
+    // Carregar opções de filtros com base em todos os cadastros do sistema
     useEffect(() => {
         const carregarOpcoesFiltros = async () => {
-            // Backend em reconstrução: deixar opções vazias
-            setOpcoesProcesso([])
-            setOpcoesOperador([])
-            setOpcoesMatricula([])
-            setOpcoesProduto([])
+            try {
+                const [produtos, modelos, funcionarios] = await Promise.all([
+                    listarProdutos(),
+                    listarModelos(),
+                    listarFuncionarios(),
+                ])
+
+                const produtosAtivosIds = new Set(produtos.map(p => p.id))
+                const modelosAtivos = modelos.filter(
+                    m => m.produto_id !== undefined && produtosAtivosIds.has(m.produto_id)
+                )
+
+                setOpcoesProduto(montarOpcoes([
+                    ...produtos.map(p => p.nome),
+                    ...modelosAtivos.map(m => m.nome),
+                ]))
+                setOpcoesMatricula(montarOpcoes(funcionarios.map(f => f.matricula)))
+                setOpcoesOperador(montarOpcoes(funcionarios.map(f => f.nome)))
+            } catch {
+                // Se houver falha em algum cadastro, mantém listas vazias para não travar a página
+                setOpcoesOperador([])
+                setOpcoesMatricula([])
+                setOpcoesProduto([])
+            }
         }
 
         carregarOpcoesFiltros()
@@ -163,30 +201,46 @@ const Registros = () => {
                 setRegistros([])
                 setTotalRegistros(0)
             } finally {
-                if (!cancelado) setCarregando(false)
+                if (!cancelado) {
+                    setCarregando(false)
+                    setCarregamentoInicialConcluido(true)
+                }
             }
         }
 
         buscar()
 
         return () => { cancelado = true }
-    }, [paginaAtual, itensPorPagina, filtros.data, filtros.processo, filtros.produto, filtros.turno, filtros.horario, refetchTrigger])
+    }, [filtros.data, filtros.processo, filtros.produto, filtros.turno, filtros.horario, refetchTrigger])
 
     // Filtrar registros localmente (filtros que não são suportados pelo backend) — memoizado
     const registrosFiltrados = useMemo(() => {
-        const normalizar = (valor?: string) => (valor || '').trim().toLowerCase()
-        const produtosSelecionados = new Set(filtros.produto.map(normalizar))
-        const matriculasSelecionadas = new Set(filtros.matricula.map(normalizar))
-        const operadoresSelecionados = new Set(filtros.operador.map(normalizar))
+        const processosSelecionados = new Set(filtros.processo.map(normalizarTexto))
+        const turnosSelecionados = new Set(filtros.turno.map(normalizarTexto))
+        const produtosSelecionados = new Set(filtros.produto.map(normalizarTexto))
+        const matriculasSelecionadas = new Set(filtros.matricula.map(normalizarTexto))
+        const operadoresSelecionados = new Set(filtros.operador.map(normalizarTexto))
+        const processoGlobalSelecionado =
+            processosSelecionados.has('subsolda1') || processosSelecionados.has('subsolda')
 
         return registros.filter(registro =>
+            (
+                processosSelecionados.size === 0 ||
+                processoGlobalSelecionado ||
+                processosSelecionados.has(normalizarTexto(registro.posto))
+            ) &&
+            (turnosSelecionados.size === 0 || turnosSelecionados.has(normalizarTexto(String(registro.turno ?? '')))) &&
+            (!filtros.data || (registro.data_inicio || '').slice(0, 10) === filtros.data) &&
+            (!filtros.horario ||
+                (registro.hora_inicio || registro.hora || '').slice(0, 5) === filtros.horario ||
+                (registro.hora_fim || '').slice(0, 5) === filtros.horario) &&
             (produtosSelecionados.size === 0 ||
-                produtosSelecionados.has(normalizar(registro.produto)) ||
-                produtosSelecionados.has(normalizar(registro.modelo))) &&
-            (matriculasSelecionadas.size === 0 || matriculasSelecionadas.has(normalizar(registro.matricula))) &&
-            (operadoresSelecionados.size === 0 || operadoresSelecionados.has(normalizar(registro.operador)))
+                produtosSelecionados.has(normalizarTexto(registro.produto)) ||
+                produtosSelecionados.has(normalizarTexto(registro.modelo))) &&
+            (matriculasSelecionadas.size === 0 || matriculasSelecionadas.has(normalizarTexto(registro.matricula))) &&
+            (operadoresSelecionados.size === 0 || operadoresSelecionados.has(normalizarTexto(registro.operador)))
         )
-    }, [registros, filtros.produto, filtros.matricula, filtros.operador])
+    }, [registros, filtros.processo, filtros.turno, filtros.data, filtros.horario, filtros.produto, filtros.matricula, filtros.operador])
 
     const getTextoFiltro = (valores: string[]) => {
         if (valores.length === 0) return 'Selecione'
@@ -203,11 +257,17 @@ const Registros = () => {
     }
 
     // Paginação (usando dados do backend)
-    const totalItens = totalRegistros > 0 ? totalRegistros : registrosFiltrados.length
+    const totalItens = registrosFiltrados.length
+    const inicioPagina = (paginaAtual - 1) * itensPorPagina
+    const fimPagina = inicioPagina + itensPorPagina
     const indiceInicial = totalItens > 0 ? (paginaAtual - 1) * itensPorPagina + 1 : 0
     const indiceFinal = Math.min(paginaAtual * itensPorPagina, totalItens)
-    const registrosPagina = registrosFiltrados
-    const totalPaginas = Math.ceil(totalItens / itensPorPagina)
+    const registrosPagina = registrosFiltrados.slice(inicioPagina, fimPagina)
+    const totalPaginas = Math.max(1, Math.ceil(totalItens / itensPorPagina))
+
+    useEffect(() => {
+        setPaginaAtual(prev => (prev > totalPaginas ? totalPaginas : prev))
+    }, [totalPaginas])
 
     // Calcular estado de seleção da página atual
     const todosSelecionadosNaPagina = registrosPagina.length > 0 && 
@@ -371,10 +431,10 @@ const Registros = () => {
                             {/* Filtros no topo */}
                             <div className="p-6 border-b border-gray-200">
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                                    {/* POSTO */}
+                                    {/* PROCESSO */}
                                     <div>
                                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            POSTO
+                                            PROCESSO
                                         </label>
                                         <button
                                             onClick={() => setModalAberto('processo')}
@@ -445,10 +505,10 @@ const Registros = () => {
                                         </div>
                                     </div>
 
-                                    {/* PRODUTO */}
+                                    {/* PRODUTO / MODELO */}
                                     <div>
                                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            PRODUTO
+                                            PRODUTO / MODELO
                                         </label>
                                         <button
                                             onClick={() => setModalAberto('produto')}
@@ -497,17 +557,10 @@ const Registros = () => {
 
                             {/* Área de conteúdo - Tabela ou mensagem vazia */}
                             <div className="p-4">
-                                {/* Indicador discreto de carregamento sem desmontar a tabela */}
-                                {carregando && (
-                                    <div className="flex items-center justify-center py-2">
-                                        <span className="text-sm text-blue-600 font-medium animate-pulse">
-                                            Atualizando...
-                                        </span>
-                                    </div>
-                                )}
-
-                                {registrosPagina.length > 0 ? (
-                                    <div className={carregando ? 'opacity-50 pointer-events-none transition-opacity' : 'transition-opacity'}>
+                                {!carregamentoInicialConcluido && carregando ? (
+                                    <div className="h-64" />
+                                ) : registrosPagina.length > 0 ? (
+                                    <div>
                                         <table className="w-full min-w-max">
                                             <thead className="bg-gray-50">
                                                 <tr>
@@ -749,7 +802,7 @@ const Registros = () => {
             {/* Modais de Filtro */}
             {modalAberto === 'processo' && (
                 <ModalFiltro
-                    titulo="Posto"
+                    titulo="Processo"
                     opcoes={opcoesProcesso}
                     valoresSelecionados={filtros.processo}
                     onConfirmar={(valores) => handleConfirmarFiltro('processo', valores)}
@@ -771,7 +824,7 @@ const Registros = () => {
 
             {modalAberto === 'produto' && (
                 <ModalFiltro
-                    titulo="Produto"
+                    titulo="Produto / Modelo"
                     opcoes={opcoesProduto}
                     valoresSelecionados={filtros.produto}
                     onConfirmar={(valores) => handleConfirmarFiltro('produto', valores)}

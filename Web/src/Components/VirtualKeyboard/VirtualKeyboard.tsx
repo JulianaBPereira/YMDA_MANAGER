@@ -16,12 +16,12 @@ const VirtualKeyboard = () => {
 
   const keyboardRef = useRef<any>(null)
 
-  // Sincronizar o valor do teclado quando o inputValue mudar externamente
+  // Sincroniza o valor apenas quando o teclado se torna visível (abertura)
   useEffect(() => {
-    if (keyboardRef.current) {
+    if (isKeyboardVisible && keyboardRef.current) {
       keyboardRef.current.setInput(inputValue)
     }
-  }, [inputValue])
+  }, [isKeyboardVisible])
 
   const handleChange = useCallback((input: string) => {
     setInputValue(input)
@@ -34,7 +34,17 @@ const VirtualKeyboard = () => {
     if (button === '{enter}') {
       hideKeyboard()
     }
-  }, [hideKeyboard])
+    if (button === '{bksp}') {
+      const newValue = inputValue.slice(0, -1)
+      setInputValue(newValue)
+      if (onChangeCallback) {
+        onChangeCallback(newValue)
+      }
+      if (keyboardRef.current) {
+        keyboardRef.current.setInput(newValue)
+      }
+    }
+  }, [hideKeyboard, inputValue, setInputValue, onChangeCallback])
 
   if (!isKeyboardVisible) {
     return null

@@ -25,6 +25,21 @@ class UsuarioUpdate(BaseModel):
     ativo: Optional[bool] = None
 
 
+class UsuarioLogin(BaseModel):
+    username: str
+    senha: str
+
+
+class UsuarioResponse(BaseModel):
+    id: int
+    username: str
+    nome: str
+    role: str
+    
+    class Config:
+        from_attributes = True
+
+
 @router.post("/", status_code=201)
 def criar_usuario(body: UsuarioCreate, db: Session = Depends(get_db)):
     service = UsuarioService(db)
@@ -37,6 +52,21 @@ def criar_usuario(body: UsuarioCreate, db: Session = Depends(get_db)):
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/login", response_model=UsuarioResponse)
+def login(body: UsuarioLogin, db: Session = Depends(get_db)):
+    service = UsuarioService(db)
+    try:
+        usuario = service.autenticar(body.username, body.senha)
+        return UsuarioResponse(
+            id=usuario.id,
+            username=usuario.username,
+            nome=usuario.nome,
+            role=usuario.role
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
 
 @router.get("/")

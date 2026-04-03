@@ -1,6 +1,4 @@
 import os
-import platform
-import subprocess
 from typing import Optional
 from ..DAO.dispositvos_dao import DispositivosDAO
 from ..Model.Dispositivos import DispositivoRaspberry
@@ -47,7 +45,7 @@ class DispositivosService:
 		return self.dao.criar_dispositivo(serial, nome_padrao)
 
 	def _obter_serial_local(self) -> Optional[str]:
-		# 1) Raspberry Pi: /proc/cpuinfo
+		# Serial real do Raspberry Pi exposto pelo kernel.
 		try:
 			if os.path.exists("/proc/cpuinfo"):
 				with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
@@ -60,27 +58,5 @@ class DispositivosService:
 									return serial
 		except Exception:
 			pass
-		# 2) Linux fallback: /etc/machine-id
-		try:
-			if os.path.exists("/etc/machine-id"):
-				with open("/etc/machine-id", "r", encoding="utf-8") as f:
-					mid = f.read().strip()
-					if mid:
-						return f"linux-{mid}"
-		except Exception:
-			pass
-		# 3) Windows fallback: wmic
-		try:
-			if platform.system().lower() == "windows":
-				out = subprocess.check_output(["wmic", "csproduct", "get", "uuid"], text=True)
-				lines = [l.strip() for l in out.splitlines() if l.strip()]
-				if len(lines) >= 2:
-					return f"win-{lines[1]}"
-		except Exception:
-			pass
-		# 4) Fallback: hostname
-		try:
-			return f"host-{platform.node()}"
-		except Exception:
-			return None
+		return None
 

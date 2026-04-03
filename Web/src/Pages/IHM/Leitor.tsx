@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ihmAPI } from "../../api/api"
-import { useAuth } from "../../contexts/AuthContext"
 
 type StatusAcesso = 'idle' | 'success' | 'error'
 
@@ -9,7 +8,6 @@ const LeitorRfid = () => {
     const [rfidInput, setRfidInput] = useState('')
     const [status, setStatus] = useState<StatusAcesso>('idle')
     const navigate = useNavigate()
-    const { logout } = useAuth()
 
     const inputRef = useRef<HTMLInputElement>(null)
     useEffect(() => {
@@ -31,12 +29,6 @@ const LeitorRfid = () => {
             localStorage.removeItem('ihm_sessao')
         }
     }, [navigate])
-
-    const handleLogout = () => {
-        localStorage.removeItem('ihm_sessao') // Limpar sessão ao sair
-        logout()
-        navigate('/login')
-    }
 
     const resetarEstado = () => {
         setStatus('idle')
@@ -84,8 +76,26 @@ const LeitorRfid = () => {
         setRfidInput(e.target.value)
     }
 
+    const handleSair = () => {
+        localStorage.removeItem('ihm_sessao')
+        localStorage.removeItem('ihm_operador_logado')
+        navigate('/ihm/login', { replace: true })
+    }
+
     return (
         <div className="bg-gray-100 min-h-screen flex items-center justify-center relative">
+            {/* Botão de Sair */}
+            <button
+                onClick={handleSair}
+                className="fixed top-6 right-6 flex items-center justify-center gap-2 px-6 py-3 text-white text-lg font-semibold rounded-lg hover:opacity-90 transition-opacity z-40"
+                style={{ backgroundColor: '#dc2626' }}
+                title="Sair e voltar ao login"
+                type="button"
+            >
+                <i className="bi bi-door-left text-2xl"></i>
+                <span>Sair</span>
+            </button>
+
             {status !== 'idle' && (
                 <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${isSuccess ? 'bg-green-600' : 'bg-red-600'}`}>
                     <div className="flex flex-col items-center text-center">
@@ -98,14 +108,6 @@ const LeitorRfid = () => {
                     </div>
                 </div>
             )}
-
-            <button
-                onClick={handleLogout}
-                className="px-12 py-4 text-white rounded-xl font-bold hover:opacity-90 transition-opacity absolute top-8 right-8 text-2xl shadow-lg"
-                style={{ backgroundColor: '#DC2626' }}
-            >
-                Sair
-            </button>
 
             <div className="flex flex-col items-center justify-center w-full px-6">
                 <h1 className="text-gray-700 font-sans text-6xl font-bold tracking-wide mb-16 text-center">
