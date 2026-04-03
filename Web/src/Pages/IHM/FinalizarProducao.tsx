@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { producaoAPI } from '../../api/api';
-import { useVirtualKeyboard } from '../../contexts/VirtualKeyboardContext';
+import { InputWithKeyboard } from '../../Components/VirtualKeyboard';
 
 interface PecaFluxo {
   nome: string;
@@ -25,7 +25,6 @@ const FinalizarProducao = () => {
   })();
   const posto = navegacao.posto || sessaoSalva?.posto || '';
   const funcionario_matricula = navegacao.funcionario_matricula || sessaoSalva?.funcionarioMatricula || '';
-  const operador = navegacao.operador || sessaoSalva?.operador || '';
 
   // Restaurar quantidade do localStorage se existir
   const quantidadeInicial = (() => {
@@ -47,7 +46,6 @@ const FinalizarProducao = () => {
   const [indicePecaAtual, setIndicePecaAtual] = useState<number>(0);
   const [deveFocarQuantidade, setDeveFocarQuantidade] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { showKeyboard, setKeyboardLayout, setKeyboardSize } = useVirtualKeyboard();
 
   const pecaAtual = pecasFluxo[indicePecaAtual] || null;
   const isUltimaPeca = pecasFluxo.length <= 1 || indicePecaAtual === pecasFluxo.length - 1;
@@ -341,27 +339,21 @@ const FinalizarProducao = () => {
             style={{ minHeight: '130px', minWidth: '320px' }}
           />
 
-          <input
+          <InputWithKeyboard
             ref={inputRef}
             type="number"
             value={quantidade}
-            onChange={(e) => {
-              setQuantidade(e.target.value);
+            onChange={(value) => {
+              setQuantidade(value);
               setErro(null);
-            }}
-            onFocus={() => {
-              setKeyboardLayout('numeric');
-              setKeyboardSize('large');
-              showKeyboard(inputRef, quantidade, (val: string) => {
-                setQuantidade(val);
-                setErro(null);
-              });
             }}
             onKeyDown={handleKeyDown}
             className="px-8 py-6 text-4xl border-4 border-gray-400 rounded-lg focus:outline-none focus:border-blue-500 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             style={{ minHeight: '150px', minWidth: '400px' }}
             disabled={carregando}
             min="0"
+            keyboardLayout="numeric"
+            keyboardSize="large"
           />
 
           <button

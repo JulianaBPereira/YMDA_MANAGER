@@ -18,6 +18,12 @@ from ..Services.dashboard_ws_service import manager as dashboard_ws_manager
 router = APIRouter(prefix="/ihm", tags=["IHM"])
 
 
+def _formatar_hora_minuto(valor) -> str | None:
+    if valor is None:
+        return None
+    return valor.strftime("%H:%M")
+
+
 class RegistroEntradaBody(BaseModel):
     posto: str | None = None
     funcionario_matricula: str
@@ -135,7 +141,7 @@ def buscar_registro_aberto(
     return {
         "registro": {
             "id": registro.id,
-            "hora_inicio": str(registro.horario_inicio) if registro.horario_inicio else None,
+            "hora_inicio": _formatar_hora_minuto(registro.horario_inicio),
             "data": str(registro.data_inicio) if registro.data_inicio else None,
             "funcionario_matricula": funcionario_matricula,
         }
@@ -208,7 +214,7 @@ async def registrar_entrada(body: RegistroEntradaBody, db: Session = Depends(get
 
     return {
         "registro_id": registro.id,
-        "hora_inicio": str(registro.horario_inicio) if registro.horario_inicio else None,
+        "hora_inicio": _formatar_hora_minuto(registro.horario_inicio),
         "data": str(registro.data_inicio) if registro.data_inicio else None,
         "funcionario_matricula": funcionario.matricula,
         "produto": operacao.produto.nome if operacao.produto else "",

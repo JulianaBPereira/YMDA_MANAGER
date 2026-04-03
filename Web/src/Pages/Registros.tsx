@@ -39,6 +39,11 @@ interface Registro {
     operacao_totens?: Array<{ nome: string }>
 }
 
+const formatarHoraMinuto = (hora?: string | null) => {
+    if (!hora) return undefined
+    return hora.slice(0, 5)
+}
+
 const Registros = () => {
     const [paginaAtual, setPaginaAtual] = useState(1)
     const [itensPorPagina, setItensPorPagina] = useState(10)
@@ -132,8 +137,8 @@ const Registros = () => {
                     data: r.data_inicio,
                     data_inicio: r.data_inicio,
                     data_fim: r.data_fim || undefined,
-                    hora_inicio: r.horario_inicio || undefined,
-                    hora_fim: r.horario_fim || undefined,
+                    hora_inicio: formatarHoraMinuto(r.horario_inicio),
+                    hora_fim: formatarHoraMinuto(r.horario_fim),
                     turno: r.turno || undefined,
                     operador: r.operador || undefined,
                     matricula: r.matricula || undefined,
@@ -390,26 +395,14 @@ const Registros = () => {
                                             placeholder="HH:MM"
                                             value={horarioInput}
                                             onChange={(e) => {
-                                                const valorAnterior = horarioInput
-                                                let valor = e.target.value.replace(/[^0-9:]/g, '')
-                                                
-                                                // Se o usuário está apagando (valor novo é menor), permite apagar tudo
-                                                if (valor.length < valorAnterior.length) {
-                                                    setHorarioInput(valor)
-                                                    return
-                                                }
-                                                
-                                                // Limita a 5 caracteres (HH:MM)
-                                                if (valor.length > 5) valor = valor.slice(0, 5)
-                                                
-                                                // Adiciona : automaticamente após 2 dígitos apenas se estiver digitando
-                                                if (valor.length === 2 && !valor.includes(':')) {
-                                                    valor = valor + ':'
-                                                }
-                                                
-                                                setHorarioInput(valor)
+                                                const digitos = e.target.value.replace(/\D/g, '').slice(0, 4)
+                                                const valorFormatado = digitos.length > 2
+                                                    ? `${digitos.slice(0, 2)}:${digitos.slice(2)}`
+                                                    : digitos
+                                                setHorarioInput(valorFormatado)
                                             }}
                                             maxLength={5}
+                                            inputMode="numeric"
                                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>

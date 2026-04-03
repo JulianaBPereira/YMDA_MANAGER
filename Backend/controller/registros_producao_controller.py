@@ -24,6 +24,12 @@ from ..Schema.registrosProducaoSchema import (
 router = APIRouter(prefix="/registros-producao", tags=["Registros de Produção"])
 
 
+def _formatar_hora_minuto(valor) -> str | None:
+	if valor is None:
+		return None
+	return valor.strftime("%H:%M")
+
+
 @router.websocket("/ws/dashboard")
 async def dashboard_ws(websocket: WebSocket):
 	await dashboard_ws_manager.connect(websocket)
@@ -119,7 +125,7 @@ def listar_dashboard_postos(db: Session = Depends(get_db)):
 			"comentario": registro.comentario,
 			"funcionario_habilitado": funcionario_habilitado,
 			"funcionario_matricula": funcionario.matricula if funcionario else None,
-			"hora_inicio": str(registro.horario_inicio) if registro.horario_inicio else None,
+			"hora_inicio": _formatar_hora_minuto(registro.horario_inicio),
 			"data_inicio": str(registro.data_inicio) if registro.data_inicio else None,
 		}
 

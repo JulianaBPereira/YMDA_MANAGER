@@ -1,5 +1,5 @@
 from datetime import date, time
-from pydantic import BaseModel, Field, AliasChoices
+from pydantic import BaseModel, Field, AliasChoices, field_serializer
 from typing import Optional
 
 
@@ -56,6 +56,12 @@ class RegistroResponse(BaseModel):
 	quantidade: Optional[int] = None
 	totem: Optional[str] = None
 	comentario: Optional[str] = None
+
+	@field_serializer("horario_inicio", "horario_fim")
+	def serializar_horario_minuto(self, valor: Optional[time]) -> Optional[str]:
+		if valor is None:
+			return None
+		return valor.strftime("%H:%M")
 
 	class Config:
 		from_attributes = True
