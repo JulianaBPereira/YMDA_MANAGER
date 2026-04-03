@@ -117,8 +117,8 @@ export const producaoAPI = {
 }
 
 export const dashboardAPI = {
-    async buscarPostosDashboard() {
-        return await fetchAPI('/registros-producao/dashboard/postos')
+    async buscarPostosDashboard(options: RequestInit = {}) {
+        return await fetchAPI('/registros-producao/dashboard/postos', options)
     },
     async atualizarComentario(registroId: number, comentario: string) {
         return await fetchAPI(`/registros-producao/${registroId}/comentario`, {

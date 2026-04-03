@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
@@ -62,6 +63,34 @@ def listar_dashboard_postos(db: Session = Depends(get_db)):
 		.all()
 	)
 
+	def _extrair_numero(texto: str | None) -> int | None:
+		if not texto:
+			return None
+		match = re.search(r"\d+", texto)
+		return int(match.group()) if match else None
+
+	# Slots fixos de exibicao: 3 sublinhas x 4 postos.
+	slot_por_posto_id: dict[int, tuple[int, int]] = {}
+	ordem_sublinha_sem_numero: dict[int, int] = {}
+	contador_sublinhas_sem_numero = 0
+	contador_postos_por_sublinha: dict[int, int] = {}
+	for posto, sublinha in postos:
+		num_sublinha = _extrair_numero(getattr(sublinha, "nome", None))
+		if num_sublinha is None or not (1 <= num_sublinha <= 3):
+			if sublinha.id not in ordem_sublinha_sem_numero:
+				contador_sublinhas_sem_numero += 1
+				ordem_sublinha_sem_numero[sublinha.id] = contador_sublinhas_sem_numero
+			num_sublinha = ordem_sublinha_sem_numero[sublinha.id]
+		num_sublinha = max(1, min(3, num_sublinha))
+
+		num_posto = _extrair_numero(getattr(posto, "nome", None))
+		if num_posto is None or not (1 <= num_posto <= 4):
+			contador_postos_por_sublinha[num_sublinha] = contador_postos_por_sublinha.get(num_sublinha, 0) + 1
+			num_posto = contador_postos_por_sublinha[num_sublinha]
+		num_posto = max(1, min(4, num_posto))
+
+		slot_por_posto_id[posto.id] = (num_sublinha, num_posto)
+
 	registros_abertos = (
 		db.query(RegistroProducao)
 		.options(
@@ -91,14 +120,17 @@ def listar_dashboard_postos(db: Session = Depends(get_db)):
 		db.query(FuncionarioOperacoes.funcionario_id, FuncionarioOperacoes.operacao_id).all()
 	)
 
-	registro_por_posto: dict[int, dict] = {}
+	registro_por_slot: dict[tuple[int, int], dict] = {}
 	for registro in registros_abertos:
 		operacao = getattr(registro, "operacao", None)
 		funcionario = getattr(registro, "funcionario", None)
 		posto = getattr(operacao, "posto", None) if operacao else None
 		if not posto:
 			continue
-		if posto.id in registro_por_posto:
+		slot = slot_por_posto_id.get(posto.id)
+		if not slot:
+			continue
+		if slot in registro_por_slot:
 			continue
 		funcionario_habilitado = (
 			bool(funcionario)
@@ -112,7 +144,7 @@ def listar_dashboard_postos(db: Session = Depends(get_db)):
 			else None
 		)
 		turno_nome = turnos_por_funcionario.get(funcionario.id) if funcionario else None
-		registro_por_posto[posto.id] = {
+		registro_por_slot[slot] = {
 			"registro_id": registro.id,
 			"operacao_id": operacao.id if operacao else None,
 			"operacao_nome": operacao.nome if operacao else None,
@@ -129,28 +161,30 @@ def listar_dashboard_postos(db: Session = Depends(get_db)):
 			"data_inicio": str(registro.data_inicio) if registro.data_inicio else None,
 		}
 
-	sublinhas_map: dict[int, dict] = {}
-	for posto, sublinha in postos:
-		if sublinha.id not in sublinhas_map:
-			sublinhas_map[sublinha.id] = {
-				"sublinha_id": sublinha.id,
-				"nome": sublinha.nome,
-				"postos": [],
-			}
-
-		ativo = registro_por_posto.get(posto.id)
-		sublinhas_map[sublinha.id]["postos"].append(
+	sublinhas_map: list[dict] = []
+	for sublinha_idx in range(1, 4):
+		postos_slot: list[dict] = []
+		for posto_idx in range(1, 5):
+			ativo = registro_por_slot.get((sublinha_idx, posto_idx))
+			postos_slot.append(
+				{
+					"posto_id": posto_idx,
+					"posto": f"POSTO {posto_idx}",
+					"ativo": bool(ativo),
+					"status": "em_operacao" if ativo else "livre",
+					"operacao_aberta": ativo,
+				}
+			)
+		sublinhas_map.append(
 			{
-				"posto_id": posto.id,
-				"posto": posto.nome,
-				"ativo": bool(ativo),
-				"status": "em_operacao" if ativo else "livre",
-				"operacao_aberta": ativo,
+				"sublinha_id": sublinha_idx,
+				"nome": f"SUBLINHA {sublinha_idx}",
+				"postos": postos_slot,
 			}
 		)
 
 	return {
-		"sublinhas": list(sublinhas_map.values()),
+		"sublinhas": sublinhas_map,
 		"atualizado_em": datetime.utcnow().isoformat(),
 	}
 

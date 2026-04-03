@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 import MenuLateral from '../Components/MenuLateral/MenuLateral';
 import TopBar from '../Components/topBar/TopBar';
@@ -76,29 +76,30 @@ const Card = ({
   posto,
   mod,
   peca_nome,
-  qtd_real,
   operador,
   habilitado,
   turno,
   operacao_nome,
-  comentario,
-  comentario_aviso,
   registro_id,
   onEnviarComentario,
 }: DashboardCardProps) => {
-  const [comentarioInput, setComentarioInput] = useState(comentario || '');
+  const [comentarioInput, setComentarioInput] = useState('');
   const [salvandoComentario, setSalvandoComentario] = useState(false);
   const [erroComentario, setErroComentario] = useState('');
 
   useEffect(() => {
-    setComentarioInput(comentario || '');
+    setComentarioInput('');
     setErroComentario('');
-  }, [comentario, registro_id]);
+  }, [registro_id]);
 
   const mostrarStatus = habilitado !== null;
   const statusAtivo = habilitado === true;
   const statusTexto = statusAtivo ? 'Habilitado' : 'Nao habilitado';
-  const pecaModeloTexto = `${peca_nome || 'Sem peca'} / ${mod || 'Sem modelo'}`;
+  const postoAtivo = Boolean(registro_id);
+  const pecaModeloTexto = postoAtivo ? `${peca_nome || ''} / ${mod || ''}` : '';
+  const operacaoTexto = postoAtivo ? (operacao_nome || '') : '';
+  const operadorTexto = postoAtivo ? (operador || '') : '';
+  const turnoTexto = postoAtivo ? (turno || '') : '';
 
   return (
     <article className="overflow-hidden rounded border border-[#d3d6dc] bg-[#f4f5f7] shadow-sm">
@@ -125,19 +126,19 @@ const Card = ({
 
           <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
             <p className="mb-0.5 text-[9px] text-gray-500">Operacao</p>
-            <p className="text-[10px] font-medium text-gray-700">{operacao_nome || 'Sem operacao'}</p>
+            <p className="text-[10px] font-medium text-gray-700">{operacaoTexto}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-1">
           <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
             <p className="mb-0.5 text-[9px] text-gray-500">Funcionario</p>
-            <p className="text-[10px] font-medium text-gray-700">{operador || '-'}</p>
+            <p className="text-[10px] font-medium text-gray-700">{operadorTexto}</p>
           </div>
 
           <div className="min-h-11 rounded border border-[#e7cfa8] bg-[#fff8ea] p-1">
             <p className="mb-0.5 text-[9px] text-gray-500">Turno</p>
-            <p className="text-[10px] font-medium text-gray-700">{turno || 'Sem turno cadastrado'}</p>
+            <p className="text-[10px] font-medium text-gray-700">{turnoTexto}</p>
           </div>
         </div>
 
@@ -153,6 +154,7 @@ const Card = ({
               setSalvandoComentario(true);
               setErroComentario('');
               await onEnviarComentario(registro_id, comentarioInput);
+              setComentarioInput('');
             } catch (error) {
               const message = error instanceof Error ? error.message : 'Falha ao salvar comentario';
               setErroComentario(message);
@@ -174,39 +176,6 @@ const Card = ({
   );
 };
 
-const SUBLINHAS_FIXAS: Sublinha[] = [
-  {
-    sublinha_id: 1,
-    nome: 'SUBLINHA 1',
-    postos: [
-      { posto_id: 1, posto: 'POSTO 1', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 2, posto: 'POSTO 2', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 3, posto: 'POSTO 3', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 4, posto: 'POSTO 4', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-    ],
-  },
-  {
-    sublinha_id: 2,
-    nome: 'SUBLINHA 2',
-    postos: [
-      { posto_id: 5, posto: 'POSTO 5', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 6, posto: 'POSTO 6', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 7, posto: 'POSTO 7', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 8, posto: 'POSTO 8', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-    ],
-  },
-  {
-    sublinha_id: 3,
-    nome: 'SUBLINHA 3',
-    postos: [
-      { posto_id: 9, posto: 'POSTO 9', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 10, posto: 'POSTO 10', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 11, posto: 'POSTO 11', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-      { posto_id: 12, posto: 'POSTO 12', mod: 'Sem modelo', peca_nome: 'Sem peca', qtd_real: 0, operador: '', habilitado: null, operacao_nome: '', comentario: '' },
-    ],
-  },
-];
-
 const Dashboard = () => {
   const processos = [
     { id: 'sub_linha_chassi', nome: 'SUB LINHA CHASSI' },
@@ -217,9 +186,24 @@ const Dashboard = () => {
   const [sublinhas, setSublinhas] = useState<Sublinha[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string>('');
+  const requisicaoAtualRef = useRef(0);
 
-  const normalizarPosto = (valor: string) =>
-    (valor || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  const criarLayoutVazio = (): Sublinha[] =>
+    [1, 2, 3].map((sublinhaIdx) => ({
+      sublinha_id: sublinhaIdx,
+      nome: `SUBLINHA ${sublinhaIdx}`,
+      postos: [1, 2, 3, 4].map((postoIdx) => ({
+        posto_id: postoIdx,
+        posto: `POSTO ${postoIdx}`,
+        mod: 'Sem modelo',
+        peca_nome: 'Sem peca',
+        qtd_real: 0,
+        operador: '',
+        habilitado: null,
+        operacao_nome: 'Livre',
+        comentario: '',
+      })),
+    }));
 
   const mapearSublinhas = (dados: DashboardSublinhaAPI[]): Sublinha[] => {
     return (dados || []).map((s) => ({
@@ -242,38 +226,26 @@ const Dashboard = () => {
     }));
   };
 
-  const mesclarComLayoutFixo = (dinamicas: Sublinha[]): Sublinha[] => {
-    const mapaPostosPorId = new Map<number, CardProps>();
-    const mapaPostosPorNome = new Map<string, CardProps>();
-    dinamicas.forEach((s) => {
-      s.postos.forEach((p) => {
-        mapaPostosPorId.set(p.posto_id, p);
-        mapaPostosPorNome.set(normalizarPosto(p.posto), p);
-      });
-    });
-
-    return SUBLINHAS_FIXAS.map((sublinhaBase) => ({
-      ...sublinhaBase,
-      postos: sublinhaBase.postos.map((postoBase) => {
-        const dinamico =
-          mapaPostosPorId.get(postoBase.posto_id) ||
-          mapaPostosPorNome.get(normalizarPosto(postoBase.posto));
-        return dinamico ? { ...postoBase, ...dinamico } : postoBase;
-      }),
-    }));
-  };
-
   const carregarDashboard = useCallback(async () => {
+    const idRequisicao = ++requisicaoAtualRef.current;
     try {
       setCarregando(true);
-      const response = await dashboardAPI.buscarPostosDashboard();
-      setSublinhas(mesclarComLayoutFixo(mapearSublinhas(response.sublinhas || [])));
+      const response = await dashboardAPI.buscarPostosDashboard({ cache: 'no-store' });
+      if (idRequisicao !== requisicaoAtualRef.current) {
+        return;
+      }
+      setSublinhas(mapearSublinhas(response.sublinhas || []));
       setErro('');
     } catch (error: any) {
-      setSublinhas(SUBLINHAS_FIXAS);
+      if (idRequisicao !== requisicaoAtualRef.current) {
+        return;
+      }
+      setSublinhas(criarLayoutVazio());
       setErro(error?.message || 'Falha ao carregar dashboard');
     } finally {
-      setCarregando(false);
+      if (idRequisicao === requisicaoAtualRef.current) {
+        setCarregando(false);
+      }
     }
   }, []);
 
@@ -285,20 +257,36 @@ const Dashboard = () => {
   useEffect(() => {
     carregarDashboard();
 
-    const ws = new WebSocket(getDashboardWebSocketUrl());
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload?.type === 'dashboard_refresh') {
-          carregarDashboard();
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let ativo = true;
+
+    const conectar = () => {
+      if (!ativo) return;
+      ws = new WebSocket(getDashboardWebSocketUrl());
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload?.type === 'dashboard_refresh') {
+            carregarDashboard();
+          }
+        } catch {
+          // ignorar mensagens inválidas
         }
-      } catch {
-        // ignorar mensagens inválidas
-      }
+      };
+      ws.onclose = () => {
+        if (!ativo) return;
+        reconnectTimer = setTimeout(conectar, 2000);
+      };
     };
+    conectar();
 
     return () => {
-      ws.close();
+      ativo = false;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      ws?.close();
     };
   }, [carregarDashboard]);
 
@@ -379,43 +367,42 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {carregando ? (
+          {carregando && sublinhas.length === 0 && (
             <div className="text-center py-8">
               <p className="text-gray-600">Carregando dados do dashboard...</p>
             </div>
-          ) : (
-            <>
-              {erro && (
-                <div className="text-center py-2 mb-4">
-                  <p className="text-red-600 text-sm">{erro}</p>
-                </div>
-              )}
-              {sublinhas.map((sublinha) => (
-              <div key={sublinha.sublinha_id} className="mb-6">
-                <h2 className="text-lg font-bold text-gray-800 mb-3">{sublinha.nome}</h2>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {sublinha.postos.map((item) => (
-                    <Card
-                      key={`${sublinha.sublinha_id}-${item.posto_id}`}
-                      posto={item.posto}
-                      mod={item.mod}
-                      peca_nome={item.peca_nome || 'Sem peça'}
-                      qtd_real={item.qtd_real || 0}
-                      operador={item.operador}
-                      habilitado={item.habilitado}
-                      turno={item.turno}
-                      operacao_nome={item.operacao_nome}
-                      comentario={item.comentario}
-                      comentario_aviso={item.comentario_aviso}
-                      registro_id={item.registro_id}
-                      onEnviarComentario={enviarComentario}
-                    />
-                  ))}
-                </div>
-              </div>
-              ))}
-            </>
           )}
+
+          {erro && (
+            <div className="text-center py-2 mb-4">
+              <p className="text-red-600 text-sm">{erro}</p>
+            </div>
+          )}
+
+          {sublinhas.map((sublinha) => (
+          <div key={sublinha.sublinha_id} className="mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">{sublinha.nome}</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {sublinha.postos.map((item) => (
+                <Card
+                  key={`${sublinha.sublinha_id}-${item.posto_id}`}
+                  posto={item.posto}
+                  mod={item.mod}
+                  peca_nome={item.peca_nome}
+                  qtd_real={item.qtd_real || 0}
+                  operador={item.operador}
+                  habilitado={item.habilitado}
+                  turno={item.turno}
+                  operacao_nome={item.operacao_nome}
+                  comentario={item.comentario}
+                  comentario_aviso={item.comentario_aviso}
+                  registro_id={item.registro_id}
+                  onEnviarComentario={enviarComentario}
+                />
+              ))}
+            </div>
+          </div>
+          ))}
         </main>
       </div>
     </div>

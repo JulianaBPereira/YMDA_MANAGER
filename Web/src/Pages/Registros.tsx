@@ -132,7 +132,9 @@ const Registros = () => {
                 const resp = await listarRegistros()
                 if (cancelado) return
                 // Mapear para o formato da página
-                const mapped: Registro[] = (resp as RegistroProducao[]).map(r => ({
+                const mapped: Registro[] = (resp as RegistroProducao[])
+                  .filter(r => Boolean(r.data_fim && r.horario_fim))
+                  .map(r => ({
                     id: r.id,
                     data: r.data_inicio,
                     data_inicio: r.data_inicio,
