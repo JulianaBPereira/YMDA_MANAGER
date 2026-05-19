@@ -1,4 +1,4 @@
-name: ymda_manager_client
+name: ymda_manager
 
 services:
   backend:
@@ -10,16 +10,15 @@ services:
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-8001}:8001"
+    depends_on: []  # Só muda isso - remove dependência do postgres
     environment:
-      POSTGRES_HOST: ${DB_HOST}
+      POSTGRES_HOST: ${DB_HOST:-postgres}  # Muda para pegar do .env
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-ymda_manager}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Postgres}
     networks:
-      - ymda-manager-client-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - ymda-manager-network
 
   frontend:
     image: ymda_manager-frontend:latest
@@ -32,15 +31,9 @@ services:
       - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
       - backend
-    environment:
-      VITE_API_URL: ${NETWORK_BASE}${BACKEND_PORT:-8001}
-      # ou se o frontend precisa chamar o backend via Docker:
-      # VITE_API_URL: http://backend:8001
     networks:
-      - ymda-manager-client-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - ymda-manager-network
 
 networks:
-  ymda-manager-client-network:
+  ymda-manager-network:
     driver: bridge
