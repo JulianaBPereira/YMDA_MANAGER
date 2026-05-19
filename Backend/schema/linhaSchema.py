@@ -1,4 +1,4 @@
-# Schema/LinhaSchema.py
+# schema/linhaSchema.py
 from pydantic import BaseModel
 from datetime import datetime
 from schema.sublinhaSchema import SublinhaResponse
