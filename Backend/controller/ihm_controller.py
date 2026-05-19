@@ -1,4 +1,5 @@
 from datetime import datetime
+import pytz
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -191,7 +192,7 @@ async def registrar_entrada(body: RegistroEntradaBody, db: Session = Depends(get
     if operacao is None:
         raise HTTPException(status_code=400, detail="Nenhuma operação cadastrada para iniciar")
 
-    agora = datetime.now()
+    agora = datetime.now(pytz.timezone('America/Manaus')).replace(tzinfo=None)
     service = RegistroProducaoService(RegistroProducaoDAO(db))
     try:
         registro = service.criar(
@@ -243,7 +244,7 @@ async def registrar_saida(body: RegistroSaidaBody, db: Session = Depends(get_db)
     if registro_id is None:
         raise HTTPException(status_code=400, detail="Registro em aberto não encontrado")
 
-    agora = datetime.now()
+    agora = datetime.now(pytz.timezone('America/Manaus')).replace(tzinfo=None)
     service = RegistroProducaoService(RegistroProducaoDAO(db))
     try:
         registro = service.finalizar(
