@@ -1,6 +1,6 @@
 from typing import Optional
-from ..DAO.modelos_dao import ModeloDAO
-from ..Model.Produtos import Modelo, Peca
+from DAO.modelos_dao import ModeloDAO
+from Model.Produtos import Modelo, Peca
 
 
 class ModeloService:

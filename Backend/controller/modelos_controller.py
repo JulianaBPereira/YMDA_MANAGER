@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..Database.database import get_db
-from ..DAO.modelos_dao import ModeloDAO
-from ..Services.modelos_service import ModeloService
-from ..Schema.modelosSchema import ModeloCreate, ModeloUpdate, ModeloResponse
-from ..Schema.pecasSchema import PecaResponse
+from Database.database import get_db
+from DAO.modelos_dao import ModeloDAO
+from Services.modelos_service import ModeloService
+from Schema.modelosSchema import ModeloCreate, ModeloUpdate, ModeloResponse
+from Schema.pecasSchema import PecaResponse
 
 
 router = APIRouter(prefix="/modelos", tags=["Modelos"])

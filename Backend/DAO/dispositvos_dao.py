@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from ..Model.Dispositivos import DispositivoRaspberry
+from Model.Dispositivos import DispositivoRaspberry
 from datetime import datetime, timezone
 
 class DispositivosDAO:

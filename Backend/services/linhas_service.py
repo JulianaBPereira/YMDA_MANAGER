@@ -1,5 +1,5 @@
-from ..Model.Linhas import Linha, Sublinha
-from ..DAO.linhas_dao import LinhasDAO, SublinhasDAO
+from Model.Linhas import Linha, Sublinha
+from DAO.linhas_dao import LinhasDAO, SublinhasDAO
 
 
 class LinhaService:

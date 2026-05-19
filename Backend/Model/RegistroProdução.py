@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Date, Time, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from ..Database.database import Base
+from Database.database import Base
 
 
 class RegistroProducao(Base):

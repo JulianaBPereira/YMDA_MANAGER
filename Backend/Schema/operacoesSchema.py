@@ -1,7 +1,7 @@
 from datetime import date, time, datetime
 from pydantic import BaseModel
 from typing import Optional
-from .pecasSchema import PecaResponse
+from Schema.pecasSchema import PecaResponse
 
 
 class OperacaoCreate(BaseModel):

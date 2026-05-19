@@ -1,4 +1,4 @@
-from ..DAO.postos_dao import PostosDAO
+from DAO.postos_dao import PostosDAO
 
 class PostosService:
     def __init__(self, dao: PostosDAO):

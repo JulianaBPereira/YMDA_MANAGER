@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
-from ..Model.Produtos import Produto
+from Model.Produtos import Produto
 
 
 class ProdutoDAO:

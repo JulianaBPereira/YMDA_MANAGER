@@ -1,7 +1,7 @@
 import os
 from typing import Optional
-from ..DAO.dispositvos_dao import DispositivosDAO
-from ..Model.Dispositivos import DispositivoRaspberry
+from DAO.dispositvos_dao import DispositivosDAO
+from Model.Dispositivos import DispositivoRaspberry
 
 
 class DispositivosService:

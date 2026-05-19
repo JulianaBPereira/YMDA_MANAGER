@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, selectinload
-from ..Model.Operacoes import Operacao, OperacaoPecas
-from ..Model.Produtos import Peca
+from Model.Operacoes import Operacao, OperacaoPecas
+from Model.Produtos import Peca
 from datetime import date, time
 
 

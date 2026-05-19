@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from ..DAO.produtos_dao import ProdutoDAO
-from ..Model.Produtos import Produto
+from DAO.produtos_dao import ProdutoDAO
+from Model.Produtos import Produto
 
 
 class ProdutoService:

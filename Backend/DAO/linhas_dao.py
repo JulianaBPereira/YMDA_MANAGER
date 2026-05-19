@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from ..Model.Linhas import Linha, Sublinha
+from Model.Linhas import Linha, Sublinha
 
 
 class LinhasDAO:

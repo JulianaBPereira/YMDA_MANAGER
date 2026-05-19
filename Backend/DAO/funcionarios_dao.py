@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 from datetime import datetime
-from ..Model.Funcionarios import Funcionario, Turnos, FuncionarioTurnos
-from ..Model.Operacoes import Operacao
+from Model.Funcionarios import Funcionario, Turnos, FuncionarioTurnos
+from Model.Operacoes import Operacao
 
 
 class FuncionariosDAO:

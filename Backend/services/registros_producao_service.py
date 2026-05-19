@@ -1,9 +1,9 @@
 from datetime import date, time
 from typing import Optional
-from ..DAO.RegistroProducao_dao import RegistroProducaoDAO
-from ..Model.Funcionarios import Funcionario
-from ..Model.Operacoes import Operacao
-from ..Model.RegistroProdução import RegistroProducao
+from DAO.RegistroProducao_dao import RegistroProducaoDAO
+from Model.Funcionarios import Funcionario
+from Model.Operacoes import Operacao
+from Model.RegistroProdução import RegistroProducao
 
 
 class RegistroProducaoService:

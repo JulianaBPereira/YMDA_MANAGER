@@ -1,10 +1,10 @@
 from datetime import date, time
 from typing import Optional
 from sqlalchemy.orm import Session, joinedload
-from ..Model.RegistroProdução import RegistroProducao
-from ..Model.Funcionarios import Funcionario
-from ..Model.Operacoes import Operacao
-from ..Model.Linhas import Sublinha
+from Model.RegistroProdução import RegistroProducao
+from Model.Funcionarios import Funcionario
+from Model.Operacoes import Operacao
+from Model.Linhas import Sublinha
 
 class RegistroProducaoDAO:
 

@@ -4,15 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from ..DAO.RegistroProducao_dao import RegistroProducaoDAO
-from ..Database.database import get_db
-from ..Model.Funcionarios import Funcionario
-from ..Model.Operacoes import Operacao
-from ..Model.Postos import Posto
-from ..Model.RegistroProdução import RegistroProducao
-from ..Services.funcionarios_service import FuncionarioService
-from ..Services.registros_producao_service import RegistroProducaoService
-from ..Services.dashboard_ws_service import manager as dashboard_ws_manager
+from DAO.RegistroProducao_dao import RegistroProducaoDAO
+from Database.database import get_db
+from Model.Funcionarios import Funcionario
+from Model.Operacoes import Operacao
+from Model.Postos import Posto
+from Model.RegistroProdução import RegistroProducao
+from Services.funcionarios_service import FuncionarioService
+from Services.registros_producao_service import RegistroProducaoService
+from Services.dashboard_ws_service import manager as dashboard_ws_manager
 
 
 router = APIRouter(prefix="/ihm", tags=["IHM"])

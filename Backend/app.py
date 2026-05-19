@@ -1,23 +1,30 @@
+import sys
+from pathlib import Path
+
+_backend_root = Path(__file__).resolve().parent
+if str(_backend_root) not in sys.path:
+    sys.path.insert(0, str(_backend_root))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .Controller.Funcionarios_controller import router as funcionario_router
-from .Controller.produtos_controller import router as produtos_router
-from .Controller.pecas_controller import router as pecas_router
-from .Controller.modelos_controller import router as modelos_router
-from .Controller.linhas_controller import router as linhas_router
-from .Controller.dispositivos_controller import router as dispositivos_router
-from .Controller.registros_producao_controller import router as registros_router
-from .Controller.operacoes_controller import router as operacoes_router
-from .Controller.postos_controller import router as postos_router
-from .Controller.turnos_controller import router as turnos_router
-from .Controller.usuarios_controller import router as usuarios_router
-from .Controller.ihm_controller import router as ihm_router
-from .Database.database import SessionLocal, engine
-from .DAO.dispositvos_dao import DispositivosDAO
-from .Services.dispositivos_service import DispositivosService
+from Controller.Funcionarios_controller import router as funcionario_router
+from Controller.produtos_controller import router as produtos_router
+from Controller.pecas_controller import router as pecas_router
+from Controller.modelos_controller import router as modelos_router
+from Controller.linhas_controller import router as linhas_router
+from Controller.dispositivos_controller import router as dispositivos_router
+from Controller.registros_producao_controller import router as registros_router
+from Controller.operacoes_controller import router as operacoes_router
+from Controller.postos_controller import router as postos_router
+from Controller.turnos_controller import router as turnos_router
+from Controller.usuarios_controller import router as usuarios_router
+from Controller.ihm_controller import router as ihm_router
+from Database.database import SessionLocal, engine
+from DAO.dispositvos_dao import DispositivosDAO
+from Services.dispositivos_service import DispositivosService
 from sqlalchemy import text
-import uvicorn 
-from . import Model  # garante que todos os modelos sejam importados e mapeados
+import uvicorn
+import Model  # garante que todos os modelos sejam importados e mapeados
 
 app = FastAPI()
 

@@ -1,8 +1,8 @@
 from datetime import datetime
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from ..DAO.usuarios_dao import UsuariosDAO
-from ..Model.Usuarios import Usuario
+from DAO.usuarios_dao import UsuariosDAO
+from Model.Usuarios import Usuario
 
 class UsuarioService:
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

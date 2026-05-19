@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from ..Model.Produtos import Peca
+from Model.Produtos import Peca
 
 
 class PecaDAO:

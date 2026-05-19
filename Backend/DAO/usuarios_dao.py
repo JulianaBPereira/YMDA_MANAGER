@@ -1,7 +1,7 @@
 # DAO
 from sqlalchemy.orm import Session
 from datetime import datetime
-from ..Model.Usuarios import Usuario, RoleEnum
+from Model.Usuarios import Usuario, RoleEnum
 
 class UsuariosDAO:
     def __init__(self, db: Session):

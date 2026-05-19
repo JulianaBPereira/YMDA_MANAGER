@@ -1,11 +1,11 @@
 # Controller/LinhaController.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..Services.linhas_service import LinhaService, LinhaCompostaService, SublinhaService
-from ..Database.database import get_db
-from ..DAO.linhas_dao import LinhasDAO, SublinhasDAO
-from ..Schema.linhaSchema import LinhaUpdate, LinhaResponse, LinhaComSublinhaCreate
-from ..Schema.sublinhaSchema import SublinhaUpdate, SublinhaResponse
+from Services.linhas_service import LinhaService, LinhaCompostaService, SublinhaService
+from Database.database import get_db
+from DAO.linhas_dao import LinhasDAO, SublinhasDAO
+from Schema.linhaSchema import LinhaUpdate, LinhaResponse, LinhaComSublinhaCreate
+from Schema.sublinhaSchema import SublinhaUpdate, SublinhaResponse
 
 router = APIRouter(prefix="/linhas", tags=["Linhas"])
 

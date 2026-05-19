@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, Date, Time, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from ..Database.database import Base
+from Database.database import Base
 
 
 class Operacao(Base):

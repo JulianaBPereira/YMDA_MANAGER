@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from ..Model.Postos import Posto
+from Model.Postos import Posto
 
 class PostosDAO:
     def __init__(self, db: Session):

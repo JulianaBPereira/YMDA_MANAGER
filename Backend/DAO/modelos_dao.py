@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from ..Model.Produtos import Modelo, Peca
+from Model.Produtos import Modelo, Peca
 
 
 class ModeloDAO:

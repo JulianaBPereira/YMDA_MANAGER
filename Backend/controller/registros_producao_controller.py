@@ -3,17 +3,17 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from ..Database.database import get_db
-from ..DAO.RegistroProducao_dao import RegistroProducaoDAO
-from ..Services.registros_producao_service import RegistroProducaoService
-from ..Model.Funcionarios import Funcionario, FuncionarioOperacoes
-from ..Model.Funcionarios import FuncionarioTurnos, Turnos
-from ..Model.Linhas import Sublinha
-from ..Model.Operacoes import Operacao
-from ..Model.Postos import Posto
-from ..Model.RegistroProdução import RegistroProducao
-from ..Services.dashboard_ws_service import manager as dashboard_ws_manager
-from ..Schema.registrosProducaoSchema import (
+from Database.database import get_db
+from DAO.RegistroProducao_dao import RegistroProducaoDAO
+from Services.registros_producao_service import RegistroProducaoService
+from Model.Funcionarios import Funcionario, FuncionarioOperacoes
+from Model.Funcionarios import FuncionarioTurnos, Turnos
+from Model.Linhas import Sublinha
+from Model.Operacoes import Operacao
+from Model.Postos import Posto
+from Model.RegistroProdução import RegistroProducao
+from Services.dashboard_ws_service import manager as dashboard_ws_manager
+from Schema.registrosProducaoSchema import (
 	RegistroCreate,
 	RegistroUpdate,
 	RegistroFinalizar,

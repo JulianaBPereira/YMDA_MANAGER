@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..Database.database import get_db
-from ..DAO.pecas_dao import PecaDAO
-from ..Services.pecas_service import PecaService
-from ..Schema.pecasSchema import PecaCreate, PecaUpdate, PecaResponse
+from Database.database import get_db
+from DAO.pecas_dao import PecaDAO
+from Services.pecas_service import PecaService
+from Schema.pecasSchema import PecaCreate, PecaUpdate, PecaResponse
 
 
 router = APIRouter(prefix="/pecas", tags=["Peças"])
