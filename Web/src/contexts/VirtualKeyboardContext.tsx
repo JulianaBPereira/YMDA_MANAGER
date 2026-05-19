@@ -27,7 +27,7 @@ export const VirtualKeyboardProvider: React.FC<{ children: React.ReactNode }> = 
   const [activeInputRef, setActiveInputRef] = useState<InputRef | null>(null);
   const [onChangeCallback, setOnChangeCallback] = useState<InputChangeHandler | null>(null);
   const [keyboardLayout, setKeyboardLayout] = useState<KeyboardLayout>('default');
-  const [keyboardSize, setKeyboardSize] = useState<KeyboardSize>('normal');
+  const [keyboardSize, setKeyboardSize] = useState<KeyboardSize>('large');
 
   const showKeyboard = useCallback((inputRef: InputRef, value: string, onChange: InputChangeHandler) => {
     setActiveInputRef(inputRef);

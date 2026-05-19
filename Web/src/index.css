@@ -251,57 +251,80 @@ body.menu-open .menu-content {
   border-color: #4338ca;
 }
 
-/* Responsivo para telas menores */
+/* Responsivo: só encolhe o teclado padrão (não o modo IHM/touch) */
 @media (max-width: 600px) {
-  .virtual-keyboard-theme .hg-button {
+  .virtual-keyboard-wrapper:not(.virtual-keyboard-large) .virtual-keyboard-theme .hg-button {
     height: 32px;
     min-width: 26px;
     font-size: 14px;
   }
-  
-  .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
+
+  .virtual-keyboard-wrapper:not(.virtual-keyboard-large) .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
     min-width: 120px;
   }
 }
 
-/* ===== Teclado Grande (para IHM) ===== */
+/* ===== Teclado Grande (IHM / Raspberry Pi touch) ===== */
+.virtual-keyboard-wrapper.virtual-keyboard-large {
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
 .virtual-keyboard-large .virtual-keyboard-theme .hg-row {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .virtual-keyboard-large .virtual-keyboard-theme .hg-button {
-  height: 72px;
-  min-width: 56px;
-  font-size: 26px;
+  height: 100px;
+  min-width: 72px;
+  font-size: 32px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 10px;
+  border-width: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
 }
 
 .virtual-keyboard-large .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
-  min-width: 200px;
+  min-width: 280px;
 }
 
 .virtual-keyboard-large .virtual-keyboard-theme .hg-button[data-skbtn="{enter}"] {
-  min-width: 80px;
+  min-width: 120px;
 }
 
 .virtual-keyboard-large .virtual-keyboard-theme .hg-button[data-skbtn="{bksp}"] {
-  min-width: 70px;
+  min-width: 100px;
 }
 
 .virtual-keyboard-large .virtual-keyboard-theme .hg-button[data-skbtn="{shift}"] {
-  min-width: 75px;
+  min-width: 105px;
 }
 
 .virtual-keyboard-large .virtual-keyboard-header {
-  padding: 6px 12px 8px 12px;
+  padding: 8px 12px 12px 12px;
 }
 
 .virtual-keyboard-large .virtual-keyboard-header span {
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .virtual-keyboard-large .virtual-keyboard-close {
-  width: 40px;
-  height: 40px;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  font-size: 22px;
+}
+
+/* Telas touch estreitas (ex.: Raspberry em portrait) — mantém teclas grandes */
+@media (max-width: 600px) {
+  .virtual-keyboard-large .virtual-keyboard-theme .hg-button {
+    height: 88px;
+    min-width: 64px;
+    font-size: 28px;
+  }
+
+  .virtual-keyboard-large .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
+    min-width: 220px;
+  }
 }

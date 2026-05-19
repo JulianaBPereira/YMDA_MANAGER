@@ -12,7 +12,7 @@ const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>((
   value,
   onChange,
   keyboardLayout = 'default',
-  keyboardSize = 'normal',
+  keyboardSize = 'large',
   onFocus,
   ...props
 }, ref) => {

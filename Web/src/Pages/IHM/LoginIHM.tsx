@@ -126,6 +126,7 @@ const LoginIHM = () => {
                 disabled={carregando}
                 autoComplete="username"
                 keyboardLayout="default"
+                keyboardSize="large"
               />
             </div>
 
@@ -144,6 +145,7 @@ const LoginIHM = () => {
                 disabled={carregando}
                 autoComplete="current-password"
                 keyboardLayout="default"
+                keyboardSize="large"
               />
             </div>
           </div>
