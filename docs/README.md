@@ -33,7 +33,7 @@ YMDA_MANAGER/
 │   ├── services/     # Regras de negócio
 │   ├── DAO/          # Acesso a dados
 │   ├── Model/        # Entidades SQLAlchemy
-│   ├── Schema/       # DTOs Pydantic
+│   ├── schema/       # DTOs Pydantic
 │   └── database/     # database.sql e conexão
 ├── Web/              # Frontend React
 │   └── src/

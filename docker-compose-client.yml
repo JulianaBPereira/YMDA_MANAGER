@@ -30,8 +30,6 @@ services:
       - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
       - backend
-    environment:
-      VITE_API_URL: http://backend:8001
     networks:
       - ymda-manager-client-network
 

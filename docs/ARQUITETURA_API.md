@@ -23,7 +23,7 @@ O YMDA Manager segue uma arquitetura em que **o frontend nunca acessa o banco de
 | **Service** | `Backend/services/` | Regras de negócio, orquestração, `ValueError` → 400 |
 | **DAO** | `Backend/DAO/` | Queries SQLAlchemy, commit/rollback |
 | **Model** | `Backend/Model/` | Tabelas mapeadas (`declarative_base`) |
-| **Schema** | `Backend/Schema/` | Request/response Pydantic (quando separado do controller) |
+| **Schema** | `Backend/schema/` | Request/response Pydantic (quando separado do controller) |
 
 Fluxo típico:
 

@@ -20,7 +20,7 @@ Executado automaticamente no Docker pela primeira inicialização do volume Post
 
 ```yaml
 # docker-compose.yml
-./Backend/Database/database.sql:/docker-entrypoint-initdb.d/01-database.sql
+./Backend/database/database.sql:/docker-entrypoint-initdb.d/01-database.sql
 ```
 
 > No repositório o caminho pode ser `Backend/database/database.sql` (minúsculas). Ajuste o volume do compose se o deploy falhar por arquivo não encontrado.

@@ -13,7 +13,7 @@ services:
       - ymda_manager_postgres_data:/var/lib/postgresql/data
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
       - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-      - ./Backend/Database/database.sql:/docker-entrypoint-initdb.d/01-database.sql:ro
+      - ./Backend/database/database.sql:/docker-entrypoint-initdb.d/01-database.sql:ro
     command: >
       postgres
       -c config_file=/etc/postgresql/postgresql.conf
@@ -60,8 +60,6 @@ services:
       - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
       - backend
-    environment:
-      VITE_API_URL: http://backend:8001
     networks:
       - ymda-manager-network
 

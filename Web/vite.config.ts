@@ -13,7 +13,7 @@ export default defineConfig({
         // Em desenvolvimento local, usa localhost:8000
         // Pode ser sobrescrito via VITE_API_BACKEND_URL
         target: process.env.VITE_API_BACKEND_URL || 
-                (process.env.DOCKER_ENV === 'true' ? 'http://backend:8000' : 'http://localhost:8000'),
+                (process.env.DOCKER_ENV === 'true' ? 'http://backend:8001' : 'http://localhost:8001'),
         changeOrigin: true,
         secure: false
       }
