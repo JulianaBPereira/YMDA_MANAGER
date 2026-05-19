@@ -6,32 +6,40 @@ services:
     build:
       context: .
       dockerfile: Backend/Dockerfile
-    container_name: ymda_manager_client_backend
+    container_name: ymda_manager_backend
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-8001}:8001"
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-host.docker.internal}
+      POSTGRES_HOST: ${DB_HOST}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-ymda_manager}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Postgres}
     networks:
       - ymda-manager-client-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     image: ymda_manager-frontend:latest
     build:
       context: .
       dockerfile: Web/Dockerfile
-    container_name: ymda_manager_client_frontend
+    container_name: ymda_manager_frontend
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
       - backend
+    environment:
+      VITE_API_URL: ${NETWORK_BASE}${BACKEND_PORT:-8001}
+      # ou se o frontend precisa chamar o backend via Docker:
+      # VITE_API_URL: http://backend:8001
     networks:
       - ymda-manager-client-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   ymda-manager-client-network:
