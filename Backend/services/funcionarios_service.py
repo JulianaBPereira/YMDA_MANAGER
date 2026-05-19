@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from DAO.funcionarios_dao import FuncionariosDAO
-from Schema.funcionariosSchema import FuncionarioCreate, FuncionarioUpdate
+from schema.funcionariosSchema import FuncionarioCreate, FuncionarioUpdate
 
 # Duração padrão de uma tag temporária
 DURACAO_TAG_TEMPORARIA_HORAS = 10

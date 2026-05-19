@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from Schema.pecasSchema import PecaResponse
+from schema.pecasSchema import PecaResponse
 
 
 class ModeloCreate(BaseModel):

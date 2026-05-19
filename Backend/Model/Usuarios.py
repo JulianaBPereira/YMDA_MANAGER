@@ -2,7 +2,7 @@
 from datetime import datetime
 from enum import Enum as PyEnum
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
-from Database.database import Base
+from database.database import Base
 
 class RoleEnum(PyEnum):
     admin    = 'admin'

@@ -1,7 +1,7 @@
 # Schema/LinhaSchema.py
 from pydantic import BaseModel
 from datetime import datetime
-from Schema.sublinhaSchema import SublinhaResponse
+from schema.sublinhaSchema import SublinhaResponse
 
 
 class LinhaCreate(BaseModel):

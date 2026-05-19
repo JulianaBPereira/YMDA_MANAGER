@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from Database.database import get_db
+from database.database import get_db
 from DAO.dispositvos_dao import DispositivosDAO
-from Services.dispositivos_service import DispositivosService
-from Schema.dispositivosSchema import DispositivoCreate, DispositivoUpdate, DispositivoResponse
+from services.dispositivos_service import DispositivosService
+from schema.dispositivosSchema import DispositivoCreate, DispositivoUpdate, DispositivoResponse
 
 
 router = APIRouter(prefix="/dispositivos", tags=["Dispositivos"])

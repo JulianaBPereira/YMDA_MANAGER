@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from Database.database import get_db
+from database.database import get_db
 from DAO.usuarios_dao import UsuariosDAO
-from Services.usuarios_service import UsuarioService
+from services.usuarios_service import UsuarioService
 from pydantic import BaseModel
 from typing import Optional
 

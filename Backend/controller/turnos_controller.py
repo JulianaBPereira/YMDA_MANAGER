@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from Database.database import get_db
+from database.database import get_db
 from Model.Funcionarios import Turnos
 
 router = APIRouter(prefix="/turnos", tags=["Turnos"])

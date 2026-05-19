@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from Database.database import get_db
-from Services.funcionarios_service import FuncionarioService
-from Schema.funcionariosSchema import (
+from database.database import get_db
+from services.funcionarios_service import FuncionarioService
+from schema.funcionariosSchema import (
     FuncionarioCreate,
     FuncionarioUpdate,
     FuncionarioResponse,
