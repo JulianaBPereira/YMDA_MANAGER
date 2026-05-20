@@ -113,6 +113,11 @@ body.menu-open .menu-content {
   -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
 }
 
+/* Senha no teclado virtual: mascarar sem type=password (evita autocomplete do navegador) */
+.vk-password-mask {
+  -webkit-text-security: disc;
+}
+
 /* ===== Virtual Keyboard Styles ===== */
 .virtual-keyboard-container {
   position: fixed;

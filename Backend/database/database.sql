@@ -165,6 +165,8 @@ CREATE TABLE registros_producao (
     id SERIAL PRIMARY KEY,
     funcionario_id INTEGER,
     operacao_id INTEGER,
+    posto_execucao_id INTEGER,
+    totem_serial VARCHAR(64),
     data_inicio DATE,
     data_fim DATE,
     horario_inicio TIME,
@@ -172,8 +174,11 @@ CREATE TABLE registros_producao (
     quantidade INTEGER,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE SET NULL,
-    FOREIGN KEY (operacao_id) REFERENCES operacoes(id) ON DELETE CASCADE
+    FOREIGN KEY (operacao_id) REFERENCES operacoes(id) ON DELETE CASCADE,
+    FOREIGN KEY (posto_execucao_id) REFERENCES postos(id) ON DELETE SET NULL
 );
+
+CREATE INDEX idx_registros_producao_posto_execucao_id ON registros_producao (posto_execucao_id);
 
 -- =========================
 -- USUÁRIOS PADRÃO

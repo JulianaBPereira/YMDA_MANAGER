@@ -98,7 +98,7 @@ const Login = () => {
         <h2 className="text-4xl font-bold mb-8 text-center" style={{ color: '#4C79AF' }}>
           Login
         </h2>
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} autoComplete="off">
           {erro && (
             <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-lg">
               {erro}
@@ -116,7 +116,6 @@ const Login = () => {
               onFocus={handleInputFocus(usernameInputRef)}
               className="w-full px-6 py-4 text-2xl border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Digite seu usuário"
-              autoComplete="username"
               required
               disabled={carregando}
               keyboardSize="large"
@@ -134,7 +133,6 @@ const Login = () => {
               onFocus={handleInputFocus(senhaInputRef)}
               className="w-full px-6 py-4 text-2xl border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Digite sua senha"
-              autoComplete="current-password"
               required
               disabled={carregando}
               keyboardSize="large"

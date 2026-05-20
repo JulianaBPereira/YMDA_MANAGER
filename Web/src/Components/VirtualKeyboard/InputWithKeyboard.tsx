@@ -14,6 +14,7 @@ const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>((
   keyboardLayout = 'default',
   keyboardSize = 'large',
   onFocus,
+  onPointerDown,
   ...props
 }, ref) => {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -28,12 +29,12 @@ const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>((
     }, 200)
   }, [])
 
-  const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+  const openKeyboard = useCallback(() => {
     setKeyboardLayout(keyboardLayout)
     setKeyboardSize(keyboardSize)
     showKeyboard(inputRef, value, onChange)
-    onFocus?.(e)
     scrollInputIntoView()
+    inputRef.current?.blur()
   }, [
     showKeyboard,
     value,
@@ -42,16 +43,22 @@ const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>((
     setKeyboardLayout,
     keyboardSize,
     setKeyboardSize,
-    onFocus,
     scrollInputIntoView,
   ])
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value)
-  }, [onChange])
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    openKeyboard()
+    onPointerDown?.(e)
+  }, [openKeyboard, onPointerDown])
 
-  // Use a ref callback para sincronizar a ref externa
-  const setRefs = (element: HTMLInputElement) => {
+  const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.blur()
+    openKeyboard()
+    onFocus?.(e)
+  }, [openKeyboard, onFocus])
+
+  const setRefs = (element: HTMLInputElement | null) => {
     inputRef.current = element
     if (typeof ref === 'function') {
       ref(element)
@@ -60,13 +67,23 @@ const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>((
     }
   }
 
+  const isPassword = props.type === 'password'
+  const { className, type, ...restProps } = props
+
   return (
     <input
       ref={setRefs}
       value={value}
-      onChange={handleChange}
+      onPointerDown={handlePointerDown}
       onFocus={handleFocus}
-      {...props}
+      {...restProps}
+      type={isPassword ? 'text' : type}
+      className={isPassword ? [className, 'vk-password-mask'].filter(Boolean).join(' ') : className}
+      readOnly
+      autoComplete="off"
+      inputMode="none"
+      spellCheck={false}
+      onChange={undefined}
     />
   )
 })
@@ -74,4 +91,3 @@ const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>((
 InputWithKeyboard.displayName = 'InputWithKeyboard'
 
 export default InputWithKeyboard
-

@@ -129,7 +129,7 @@ const LoginIHM = () => {
           </div>
         )}
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} autoComplete="off">
           {/* Container com duas colunas lado a lado */}
           <div className="grid grid-cols-2 gap-8 mb-10">
             {/* Coluna 1: Usuário */}
@@ -146,7 +146,6 @@ const LoginIHM = () => {
                 placeholder="Digite seu usuário"
                 className="w-full px-6 py-5 text-2xl border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 min-h-[72px]"
                 disabled={carregando}
-                autoComplete="username"
                 keyboardLayout="default"
                 keyboardSize="ihm"
               />
@@ -166,7 +165,6 @@ const LoginIHM = () => {
                 placeholder="Digite sua senha"
                 className="w-full px-6 py-5 text-2xl border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 min-h-[72px]"
                 disabled={carregando}
-                autoComplete="current-password"
                 keyboardLayout="default"
                 keyboardSize="ihm"
               />
