@@ -66,7 +66,7 @@ const TopBar = () => {
                         <button
                             onClick={() => {
                                 logout();
-                                navigate('/admin');
+                                navigate('/admin', { replace: true });
                             }}
                             className="flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md text-sm font-medium transition-colors whitespace-nowrap min-h-9 cursor-pointer hover:opacity-90"
                             style={{ 

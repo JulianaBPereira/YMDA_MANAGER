@@ -1,3 +1,5 @@
+import { getStoredUser } from '../utils/authStorage'
+
 export const API_BASE_URL = import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/api`
     : `http://${window.location.hostname}:8001/api`
@@ -9,16 +11,8 @@ export function getDashboardWebSocketUrl() {
 }
 
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
-    let usuarioId: string | null = null
-    try {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-            const user = JSON.parse(userStr)
-            usuarioId = user.id?.toString() || null
-        }
-    } catch {
-        // ignorar erros ao ler localStorage
-    }
+    const user = getStoredUser()
+    const usuarioId = user?.id?.toString() ?? null
 
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',

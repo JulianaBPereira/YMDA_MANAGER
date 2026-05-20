@@ -5,7 +5,7 @@ interface InputWithKeyboardProps extends Omit<React.InputHTMLAttributes<HTMLInpu
   value: string
   onChange: (value: string) => void
   keyboardLayout?: 'default' | 'numeric'
-  keyboardSize?: 'normal' | 'large'
+  keyboardSize?: 'normal' | 'large' | 'ihm'
 }
 
 const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>(({
@@ -19,12 +19,32 @@ const InputWithKeyboard = forwardRef<HTMLInputElement, InputWithKeyboardProps>((
   const inputRef = useRef<HTMLInputElement>(null)
   const { showKeyboard, setKeyboardLayout, setKeyboardSize } = useVirtualKeyboard()
 
+  const scrollInputIntoView = useCallback(() => {
+    window.setTimeout(() => {
+      inputRef.current?.scrollIntoView({
+        block: 'center',
+        behavior: 'smooth',
+      })
+    }, 200)
+  }, [])
+
   const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
     setKeyboardLayout(keyboardLayout)
     setKeyboardSize(keyboardSize)
     showKeyboard(inputRef, value, onChange)
     onFocus?.(e)
-  }, [showKeyboard, value, onChange, keyboardLayout, setKeyboardLayout, keyboardSize, setKeyboardSize, onFocus])
+    scrollInputIntoView()
+  }, [
+    showKeyboard,
+    value,
+    onChange,
+    keyboardLayout,
+    setKeyboardLayout,
+    keyboardSize,
+    setKeyboardSize,
+    onFocus,
+    scrollInputIntoView,
+  ])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value)

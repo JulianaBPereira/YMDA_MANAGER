@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ihmAPI } from "../../api/api"
+import { clearIhmPersistence, mergeIhmSessao, saveIhmRoute } from "../../utils/ihmPersistence"
 
 type StatusAcesso = 'idle' | 'success' | 'error'
 
@@ -13,22 +14,6 @@ const LeitorRfid = () => {
     useEffect(() => {
         inputRef.current?.focus()
     }, []);
-
-    // Ao carregar, verificar se há sessão anterior (ex: Raspberry reiniciou)
-    useEffect(() => {
-        try {
-            const sessao = localStorage.getItem('ihm_sessao')
-            if (sessao) {
-                const dados = JSON.parse(sessao)
-                if (dados.operador) {
-                    // Sessão encontrada — restaurar para a tela de operação
-                    navigate('/ihm/operacao', { state: { operador: dados.operador } })
-                }
-            }
-        } catch {
-            localStorage.removeItem('ihm_sessao')
-        }
-    }, [navigate])
 
     const resetarEstado = () => {
         setStatus('idle')
@@ -46,7 +31,8 @@ const LeitorRfid = () => {
                 setStatus('success')
 
                 // Salvar sessão para restauração após reinicialização
-                localStorage.setItem('ihm_sessao', JSON.stringify({ operador: nomeOperador }))
+                mergeIhmSessao({ operador: nomeOperador })
+                saveIhmRoute('/ihm/operacao')
 
                 setTimeout(() => {
                     navigate('/ihm/operacao', { state: { operador: nomeOperador } })
@@ -77,8 +63,7 @@ const LeitorRfid = () => {
     }
 
     const handleSair = () => {
-        localStorage.removeItem('ihm_sessao')
-        localStorage.removeItem('ihm_operador_logado')
+        clearIhmPersistence()
         navigate('/ihm/login', { replace: true })
     }
 

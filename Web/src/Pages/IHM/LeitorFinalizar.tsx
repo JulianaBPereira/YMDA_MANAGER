@@ -2,6 +2,11 @@ import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { ihmAPI, producaoAPI } from "../../api/api"
 import { InputWithKeyboard } from "../../Components/VirtualKeyboard"
+import {
+    getIhmSessao,
+    mergeIhmSessao,
+    resetIhmFluxoProducao,
+} from "../../utils/ihmPersistence"
 
 type StatusAcesso = 'idle' | 'success' | 'error'
 
@@ -14,12 +19,7 @@ const LeitorFinalizar = () => {
         funcionario_matricula?: string; 
         operador?: string 
     }) || {};
-    const sessaoSalva = (() => {
-        try {
-            const s = localStorage.getItem('ihm_sessao');
-            return s ? JSON.parse(s) : null;
-        } catch { return null; }
-    })();
+    const sessaoSalva = getIhmSessao();
     const posto = navegacao.posto || sessaoSalva?.posto || '';
     const funcionario_matricula = navegacao.funcionario_matricula || sessaoSalva?.funcionarioMatricula || '';
     const operador = navegacao.operador || sessaoSalva?.operador || '';
@@ -29,11 +29,20 @@ const LeitorFinalizar = () => {
     const [colaborador, setColaborador] = useState<string | null>(null)
     const [mensagem, setMensagem] = useState<string>('')
 
-    // Limpar sessão e voltar à tela inicial
     const voltarAoLeitor = () => {
-        localStorage.removeItem('ihm_sessao')
+        resetIhmFluxoProducao()
         navigate('/ihm/leitor', { replace: true })
     };
+
+    useEffect(() => {
+        if (posto && funcionario_matricula) {
+            mergeIhmSessao({
+                posto,
+                funcionarioMatricula: funcionario_matricula,
+                ...(operador ? { operador } : {}),
+            });
+        }
+    }, [posto, funcionario_matricula, operador]);
 
     useEffect(() => {
         // Se não tiver os dados necessários, redirecionar para o leitor inicial
@@ -221,7 +230,7 @@ const LeitorFinalizar = () => {
                                     onKeyDown={handleKeyDown}
                                     autoFocus
                                     disabled={status !== 'idle'}
-                                    keyboardSize="large"
+                                    keyboardSize="ihm"
                                 />
                             </div>
                             <button

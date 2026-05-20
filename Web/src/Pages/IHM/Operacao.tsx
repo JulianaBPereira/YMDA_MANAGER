@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ihmAPI, producaoAPI } from '../../api/api';
+import {
+  getIhmSessao,
+  IHM_SESSAO_KEY,
+  mergeIhmSessao,
+  saveIhmRoute,
+} from '../../utils/ihmPersistence';
 
 interface OperacaoContexto {
   id: number;
@@ -25,7 +31,7 @@ const Operacao = () => {
     const doState = (location.state as { operador?: string })?.operador;
     if (doState) return doState;
     try {
-      const sessao = localStorage.getItem('ihm_sessao');
+      const sessao = localStorage.getItem(IHM_SESSAO_KEY);
       if (sessao) return JSON.parse(sessao).operador || '';
     } catch { /* sessão inválida */ }
     return '';
@@ -224,6 +230,38 @@ const Operacao = () => {
     verificarRegistroAberto();
   }, [operacao, funcionarioMatricula, postoAtual, navigate, operador]);
 
+  // Salvar formulário e operação em andamento ao sair do app sem logout
+  useEffect(() => {
+    if (!operador) return;
+    mergeIhmSessao({
+      operador,
+      ...(funcionarioMatricula ? { funcionarioMatricula } : {}),
+      ...(postoAtual ? { posto: postoAtual } : {}),
+      ...(operacao ? { operacao } : {}),
+      ...(modelo ? { modelo } : {}),
+      ...(modeloDescricao ? { modeloDescricao } : {}),
+      ...(peca ? { peca } : {}),
+      ...(codigo ? { codigo } : {}),
+      ...(produto ? { produto } : {}),
+      ...(pecasDisponiveis.length > 0 ? { pecasDisponiveis } : {}),
+      ...(registroAberto?.registro_id != null
+        ? { registroId: registroAberto.registro_id }
+        : {}),
+    });
+  }, [
+    operador,
+    funcionarioMatricula,
+    postoAtual,
+    operacao,
+    modelo,
+    modeloDescricao,
+    peca,
+    codigo,
+    produto,
+    pecasDisponiveis,
+    registroAberto,
+  ]);
+
   const validarFormulario = (): boolean => {
     const faltaOperacao = !operacao;
     const faltaPeca = false;
@@ -281,8 +319,7 @@ const Operacao = () => {
         produto: response.produto
       });
 
-      // Salvar sessão completa para restauração após reinicialização
-      localStorage.setItem('ihm_sessao', JSON.stringify({
+      mergeIhmSessao({
         operador,
         funcionarioMatricula,
         posto: postoAtual,
@@ -292,9 +329,10 @@ const Operacao = () => {
         peca,
         codigo,
         produto,
-        pecasDisponiveis
-      }));
-      
+        pecasDisponiveis,
+        registroId: response.registro_id,
+      });
+
       setCarregando(false);
     } catch (error: any) {
       console.error('Erro ao iniciar trabalho:', error);
@@ -311,6 +349,23 @@ const Operacao = () => {
       alert('Dados insuficientes para finalizar o processo.');
       return;
     }
+
+    mergeIhmSessao({
+      operador,
+      funcionarioMatricula,
+      posto: postoAtual,
+      operacao,
+      modelo,
+      modeloDescricao,
+      peca,
+      codigo,
+      produto,
+      pecasDisponiveis,
+      ...(registroAberto?.registro_id != null
+        ? { registroId: registroAberto.registro_id }
+        : {}),
+    });
+    saveIhmRoute('/ihm/finalizar-producao');
 
     navigate('/ihm/finalizar-producao', {
       state: {

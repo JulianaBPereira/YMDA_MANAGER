@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InputWithKeyboard } from '../../Components/VirtualKeyboard';
+import { useKeyboardAwarePageStyle } from '../../contexts/VirtualKeyboardContext';
+import {
+  IHM_OPERADOR_KEY,
+  isIhmOperadorLogado,
+  restoreIhmSession,
+  saveIhmRoute,
+} from '../../utils/ihmPersistence';
 
 const LoginIHM = () => {
   const [username, setUsername] = useState('');
@@ -9,9 +16,29 @@ const LoginIHM = () => {
   const [erroVisivel, setErroVisivel] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const navigate = useNavigate();
+  const pageStyle = useKeyboardAwarePageStyle({
+    paddingTop: 'max(1rem, env(safe-area-inset-top))',
+    paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
   const usernameInputRef = useRef<HTMLInputElement>(null);
   const senhaInputRef = useRef<HTMLInputElement>(null);
   const erroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleInputFocus = (inputRef: React.RefObject<HTMLInputElement | null>) => () => {
+    window.setTimeout(() => {
+      if (!inputRef.current || !containerRef.current) return;
+      const inputRect = inputRef.current.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const scrollTop = containerRef.current.scrollTop;
+      const inputTop = inputRect.top - containerRect.top + scrollTop;
+      const targetScroll = inputTop - containerRect.height * 0.25;
+      containerRef.current.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth',
+      });
+    }, 280);
+  };
 
   const mostrarErro = (mensagem: string) => {
     if (erroTimerRef.current) clearTimeout(erroTimerRef.current);
@@ -23,20 +50,10 @@ const LoginIHM = () => {
     }, 3000);
   };
 
-  // Ao carregar, verificar se há sessão anterior da IHM
+  // Operador ainda logado — voltar para a última tela IHM usada
   useEffect(() => {
-    try {
-      const sessao = localStorage.getItem('ihm_sessao');
-      if (sessao) {
-        const dados = JSON.parse(sessao);
-        if (dados.operador) {
-          // Sessão encontrada — restaurar para a tela de operação
-          navigate('/ihm/operacao', { state: { operador: dados.operador } });
-        }
-      }
-    } catch {
-      localStorage.removeItem('ihm_sessao');
-    }
+    if (!isIhmOperadorLogado()) return;
+    restoreIhmSession(navigate);
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -76,14 +93,14 @@ const LoginIHM = () => {
       }
 
       // Salvar informação do operador que fez login (não é o funcionário, é o usuário do sistema)
-      localStorage.setItem('ihm_operador_logado', JSON.stringify({
+      localStorage.setItem(IHM_OPERADOR_KEY, JSON.stringify({
         username: userData.username,
         nome: userData.nome,
         id: userData.id,
         role: userData.role
       }));
 
-      // Redirecionar para o Leitor RFID
+      saveIhmRoute('/ihm/leitor');
       navigate('/ihm/leitor', { replace: true });
     } catch (error: any) {
       mostrarErro(error.message || 'Erro ao fazer login. Verifique suas credenciais.');
@@ -93,15 +110,19 @@ const LoginIHM = () => {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen flex items-start justify-center p-4 pt-16">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl">
-        <h2 className="text-4xl font-bold mb-8 text-center" style={{ color: '#4C79AF' }}>
+    <div
+      ref={containerRef}
+      className="bg-gray-100 touch-scroll-container touch-pan-y flex items-center justify-center p-4 vk-keyboard-aware"
+      style={pageStyle}
+    >
+      <div className="bg-white p-10 sm:p-12 rounded-3xl shadow-2xl w-full max-w-5xl my-auto">
+        <h2 className="text-5xl font-bold mb-10 text-center" style={{ color: '#4C79AF' }}>
           Login
         </h2>
 
         {erro && (
           <div
-            className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-lg transition-opacity duration-400"
+            className="mb-8 p-5 bg-red-100 border-2 border-red-400 text-red-700 rounded-xl text-xl transition-opacity duration-400"
             style={{ opacity: erroVisivel ? 1 : 0 }}
           >
             {erro}
@@ -110,10 +131,10 @@ const LoginIHM = () => {
 
         <form onSubmit={handleLogin}>
           {/* Container com duas colunas lado a lado */}
-          <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-2 gap-8 mb-10">
             {/* Coluna 1: Usuário */}
             <div>
-              <label className="block text-xl font-semibold text-gray-700 mb-3">
+              <label className="block text-2xl font-semibold text-gray-700 mb-4">
                 Usuário
               </label>
               <InputWithKeyboard
@@ -121,18 +142,19 @@ const LoginIHM = () => {
                 type="text"
                 value={username}
                 onChange={setUsername}
+                onFocus={handleInputFocus(usernameInputRef)}
                 placeholder="Digite seu usuário"
-                className="w-full px-4 py-3 text-xl border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-6 py-5 text-2xl border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 min-h-[72px]"
                 disabled={carregando}
                 autoComplete="username"
                 keyboardLayout="default"
-                keyboardSize="large"
+                keyboardSize="ihm"
               />
             </div>
 
             {/* Coluna 2: Senha */}
             <div>
-              <label className="block text-xl font-semibold text-gray-700 mb-3">
+              <label className="block text-2xl font-semibold text-gray-700 mb-4">
                 Senha
               </label>
               <InputWithKeyboard
@@ -140,12 +162,13 @@ const LoginIHM = () => {
                 type="password"
                 value={senha}
                 onChange={setSenha}
+                onFocus={handleInputFocus(senhaInputRef)}
                 placeholder="Digite sua senha"
-                className="w-full px-4 py-3 text-xl border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-6 py-5 text-2xl border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 min-h-[72px]"
                 disabled={carregando}
                 autoComplete="current-password"
                 keyboardLayout="default"
-                keyboardSize="large"
+                keyboardSize="ihm"
               />
             </div>
           </div>
@@ -153,7 +176,7 @@ const LoginIHM = () => {
           {/* Botão em baixo, ocupando toda a largura */}
           <button
             type="submit"
-            className="w-full py-4 px-4 text-white text-2xl font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+            className="w-full py-6 px-6 text-white text-3xl font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed min-h-[80px]"
             style={{ backgroundColor: '#4C79AF' }}
             disabled={carregando}
           >

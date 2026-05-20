@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import Keyboard from 'react-simple-keyboard'
 import 'react-simple-keyboard/build/css/index.css'
 import { useVirtualKeyboard } from '../../contexts/VirtualKeyboardContext'
@@ -11,10 +11,12 @@ const VirtualKeyboard = () => {
     setInputValue,
     onChangeCallback,
     keyboardLayout,
-    keyboardSize
+    keyboardSize,
+    setKeyboardHeight,
   } = useVirtualKeyboard()
 
   const keyboardRef = useRef<any>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
   // Sincroniza o valor apenas quando o teclado se torna visível (abertura)
   useEffect(() => {
@@ -46,9 +48,46 @@ const VirtualKeyboard = () => {
     }
   }, [hideKeyboard, inputValue, setInputValue, onChangeCallback])
 
+  useLayoutEffect(() => {
+    if (!isKeyboardVisible) {
+      setKeyboardHeight(0)
+      return
+    }
+
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+
+    const measure = () => {
+      const height = Math.ceil(wrapper.getBoundingClientRect().height)
+      if (height > 0) setKeyboardHeight(height)
+    }
+
+    measure()
+    const raf = requestAnimationFrame(measure)
+    const t1 = window.setTimeout(measure, 80)
+    const t2 = window.setTimeout(measure, 250)
+
+    const observer = new ResizeObserver(measure)
+    observer.observe(wrapper)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      observer.disconnect()
+    }
+  }, [isKeyboardVisible, keyboardLayout, keyboardSize, setKeyboardHeight])
+
   if (!isKeyboardVisible) {
     return null
   }
+
+  const sizeClass =
+    keyboardSize === 'ihm'
+      ? 'virtual-keyboard-ihm'
+      : keyboardSize === 'large'
+        ? 'virtual-keyboard-large'
+        : ''
 
   // Layout padrão QWERTY brasileiro
   const defaultLayout = {
@@ -87,14 +126,8 @@ const VirtualKeyboard = () => {
 
   return (
     <div className="virtual-keyboard-container">
-      {/* Overlay para fechar o teclado ao clicar fora */}
-      <div 
-        className="virtual-keyboard-overlay"
-        onClick={hideKeyboard}
-      />
-      
       {/* Container do teclado */}
-      <div className={`virtual-keyboard-wrapper ${keyboardSize === 'large' ? 'virtual-keyboard-large' : ''}`}>
+      <div ref={wrapperRef} className={`virtual-keyboard-wrapper ${sizeClass}`}>
         <div className="virtual-keyboard-header">
           <span className="text-sm text-gray-600">Teclado Virtual</span>
           <button

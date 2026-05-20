@@ -2,6 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { producaoAPI } from '../../api/api';
 import { InputWithKeyboard } from '../../Components/VirtualKeyboard';
+import {
+  getIhmSessao,
+  mergeIhmSessao,
+  resetIhmFluxoProducao,
+} from '../../utils/ihmPersistence';
 
 interface PecaFluxo {
   nome: string;
@@ -17,26 +22,12 @@ const FinalizarProducao = () => {
     funcionario_matricula?: string; 
     operador?: string;
   }) || {};
-  const sessaoSalva = (() => {
-    try {
-      const s = localStorage.getItem('ihm_sessao');
-      return s ? JSON.parse(s) : null;
-    } catch { return null; }
-  })();
+  const sessaoSalva = getIhmSessao();
   const posto = navegacao.posto || sessaoSalva?.posto || '';
-  const funcionario_matricula = navegacao.funcionario_matricula || sessaoSalva?.funcionarioMatricula || '';
+  const funcionario_matricula =
+    navegacao.funcionario_matricula || sessaoSalva?.funcionarioMatricula || '';
 
-  // Restaurar quantidade do localStorage se existir
-  const quantidadeInicial = (() => {
-    try {
-      const sessao = localStorage.getItem('ihm_sessao');
-      if (sessao) {
-        const dados = JSON.parse(sessao);
-        return dados.quantidadeFinalizacao || '';
-      }
-    } catch { /* ignorar erros */ }
-    return '';
-  })();
+  const quantidadeInicial = sessaoSalva?.quantidadeFinalizacao || '';
 
   const [quantidade, setQuantidade] = useState<string>(quantidadeInicial);
   const [carregando, setCarregando] = useState(false);
@@ -50,47 +41,19 @@ const FinalizarProducao = () => {
   const pecaAtual = pecasFluxo[indicePecaAtual] || null;
   const isUltimaPeca = pecasFluxo.length <= 1 || indicePecaAtual === pecasFluxo.length - 1;
 
-  // Salvar quantidade no localStorage sempre que mudar
   useEffect(() => {
-    try {
-      const sessao = localStorage.getItem('ihm_sessao');
-      if (sessao) {
-        const dados = JSON.parse(sessao);
-        dados.quantidadeFinalizacao = quantidade;
-        localStorage.setItem('ihm_sessao', JSON.stringify(dados));
-      }
-    } catch { /* ignorar erros */ }
-  }, [quantidade]);
+    if (!posto || !funcionario_matricula) return;
+    mergeIhmSessao({
+      posto,
+      funcionarioMatricula: funcionario_matricula,
+      quantidadeFinalizacao: quantidade,
+      indicePecaAtualFinalizacao: indicePecaAtual,
+      ...(registroId != null ? { registroId } : {}),
+    });
+  }, [posto, funcionario_matricula, quantidade, indicePecaAtual, registroId]);
 
-  useEffect(() => {
-    try {
-      const sessao = localStorage.getItem('ihm_sessao');
-      if (sessao) {
-        const dados = JSON.parse(sessao);
-        dados.indicePecaAtualFinalizacao = indicePecaAtual;
-        localStorage.setItem('ihm_sessao', JSON.stringify(dados));
-      }
-    } catch {
-      // ignorar erros
-    }
-  }, [indicePecaAtual]);
-
-  // Limpar sessão e voltar à tela inicial
   const voltarAoLeitor = () => {
-    // Limpar apenas os dados de finalização, manter o resto da sessão se necessário
-    try {
-      const sessao = localStorage.getItem('ihm_sessao');
-      if (sessao) {
-        const dados = JSON.parse(sessao);
-        delete dados.quantidadeFinalizacao;
-        delete dados.registroId;
-        delete dados.indicePecaAtualFinalizacao;
-        localStorage.setItem('ihm_sessao', JSON.stringify(dados));
-      }
-    } catch { /* ignorar erros */ }
-    
-    // Remover completamente a sessão apenas quando finalizar com sucesso
-    localStorage.removeItem('ihm_sessao');
+    resetIhmFluxoProducao();
     navigate('/ihm/leitor', { replace: true });
   };
 
@@ -113,32 +76,32 @@ const FinalizarProducao = () => {
   }, [deveFocarQuantidade, carregando, indicePecaAtual]);
 
   useEffect(() => {
-    try {
-      const sessao = localStorage.getItem('ihm_sessao');
-      if (!sessao) return;
+    const dados = getIhmSessao();
+    if (!dados) return;
 
-      const dados = JSON.parse(sessao);
-      const pecasSalvas: PecaFluxo[] = Array.isArray(dados.pecasDisponiveis)
-        ? dados.pecasDisponiveis
-            .filter((p: any) => p && typeof p.nome === 'string' && p.nome.trim().length > 0)
-            .map((p: any) => ({ nome: p.nome, codigo: p.codigo || '' }))
-        : [];
+    const pecasSalvas: PecaFluxo[] = Array.isArray(dados.pecasDisponiveis)
+      ? dados.pecasDisponiveis
+          .filter((p) => p && typeof p.nome === 'string' && p.nome.trim().length > 0)
+          .map((p) => ({ nome: p.nome, codigo: p.codigo || '' }))
+      : [];
 
-      const listaPecas: PecaFluxo[] = pecasSalvas.length > 0
+    const listaPecas: PecaFluxo[] =
+      pecasSalvas.length > 0
         ? pecasSalvas
-        : (dados.peca ? [{ nome: dados.peca, codigo: dados.codigo || '' }] : []);
-      setPecasFluxo(listaPecas);
+        : dados.peca
+          ? [{ nome: dados.peca, codigo: dados.codigo || '' }]
+          : [];
+    setPecasFluxo(listaPecas);
 
-      const indiceSalvo = Number.isInteger(dados.indicePecaAtualFinalizacao)
-        ? Number(dados.indicePecaAtualFinalizacao)
-        : 0;
-      const indiceNormalizado = Math.max(0, Math.min(indiceSalvo, Math.max(listaPecas.length - 1, 0)));
-      setIndicePecaAtual(indiceNormalizado);
-
-      setQuantidade(dados.quantidadeFinalizacao || '');
-    } catch {
-      // ignorar sessão inválida
-    }
+    const indiceSalvo = Number.isInteger(dados.indicePecaAtualFinalizacao)
+      ? Number(dados.indicePecaAtualFinalizacao)
+      : 0;
+    const indiceNormalizado = Math.max(
+      0,
+      Math.min(indiceSalvo, Math.max(listaPecas.length - 1, 0))
+    );
+    setIndicePecaAtual(indiceNormalizado);
+    setQuantidade(dados.quantidadeFinalizacao || '');
   }, []);
 
   useEffect(() => {
@@ -156,30 +119,16 @@ const FinalizarProducao = () => {
     const buscarRegistro = async () => {
       try {
         // Tentar restaurar registroId do localStorage primeiro
-        try {
-          const sessao = localStorage.getItem('ihm_sessao');
-          if (sessao) {
-            const dados = JSON.parse(sessao);
-            if (dados.registroId) {
-              setRegistroId(dados.registroId);
-            }
-          }
-        } catch { /* ignorar erros */ }
+        const sessao = getIhmSessao();
+        if (sessao?.registroId) {
+          setRegistroId(sessao.registroId);
+        }
 
         const registroResponse = await producaoAPI.buscarRegistroAberto(posto, funcionario_matricula);
         if (registroResponse.registro && registroResponse.registro.id) {
           const id = registroResponse.registro.id;
           setRegistroId(id);
-          
-          // Salvar registroId no localStorage
-          try {
-            const sessao = localStorage.getItem('ihm_sessao');
-            if (sessao) {
-              const dados = JSON.parse(sessao);
-              dados.registroId = id;
-              localStorage.setItem('ihm_sessao', JSON.stringify(dados));
-            }
-          } catch { /* ignorar erros */ }
+          mergeIhmSessao({ registroId: id });
         } else {
           // Registro não encontrado, redirecionar para o leitor
           setErro('Nenhum registro em aberto encontrado');
@@ -231,8 +180,7 @@ const FinalizarProducao = () => {
           return;
         }
 
-        const sessao = localStorage.getItem('ihm_sessao');
-        const dadosSessao = sessao ? JSON.parse(sessao) : {};
+        const dadosSessao = getIhmSessao() || {};
         const operacaoSessao = dadosSessao.operacao;
         const modeloSessao = dadosSessao.modelo;
 
@@ -247,16 +195,7 @@ const FinalizarProducao = () => {
 
         if (novaEntrada?.registro_id) {
           setRegistroId(novaEntrada.registro_id);
-          try {
-            const sessaoAtual = localStorage.getItem('ihm_sessao');
-            if (sessaoAtual) {
-              const dadosAtual = JSON.parse(sessaoAtual);
-              dadosAtual.registroId = novaEntrada.registro_id;
-              localStorage.setItem('ihm_sessao', JSON.stringify(dadosAtual));
-            }
-          } catch {
-            // ignorar erros
-          }
+          mergeIhmSessao({ registroId: novaEntrada.registro_id });
         }
 
         setIndicePecaAtual(proximoIndice);
@@ -353,7 +292,7 @@ const FinalizarProducao = () => {
             disabled={carregando}
             min="0"
             keyboardLayout="numeric"
-            keyboardSize="large"
+            keyboardSize="ihm"
           />
 
           <button

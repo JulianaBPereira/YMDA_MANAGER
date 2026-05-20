@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { InputWithKeyboard } from '../Components/VirtualKeyboard';
+import { useKeyboardAwarePageStyle } from '../contexts/VirtualKeyboardContext';
 
 // Desabilitar link de cadastro na tela de login (mantém rota e página; só oculta o link)
 const SHOW_CADASTRO_LINK = false;
@@ -13,6 +14,10 @@ const Login = () => {
   const [carregando, setCarregando] = useState(false);
   const { login, user, isOperador, isAdmin, isMaster } = useAuth();
   const navigate = useNavigate();
+  const pageStyle = useKeyboardAwarePageStyle({
+    padding: '1rem',
+    paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const usernameInputRef = useRef<HTMLInputElement>(null);
   const senhaInputRef = useRef<HTMLInputElement>(null);
@@ -79,13 +84,8 @@ const Login = () => {
   return (
     <div 
       ref={containerRef}
-      className="flex items-center justify-center bg-gray-100 touch-scroll-container touch-pan-y"
-      style={{ 
-        minHeight: '100dvh', // Dynamic viewport height para telas touch (ajusta quando teclado aparece)
-        height: '100dvh',
-        padding: '1rem',
-        paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' // Espaço extra para quando o teclado aparecer + safe area
-      }}
+      className="flex items-center justify-center bg-gray-100 touch-scroll-container touch-pan-y vk-keyboard-aware"
+      style={pageStyle}
     >
       <div 
         className="bg-white p-10 rounded-xl shadow-xl w-full max-w-4xl my-auto"

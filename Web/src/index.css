@@ -128,7 +128,13 @@ body.menu-open .menu-content {
   position: absolute;
   inset: 0;
   background: transparent;
-  pointer-events: auto;
+  pointer-events: none;
+}
+
+/* Páginas de login com teclado virtual: área útil = tela menos altura do teclado */
+html.virtual-keyboard-open .vk-keyboard-aware {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .virtual-keyboard-wrapper {
@@ -253,13 +259,13 @@ body.menu-open .menu-content {
 
 /* Responsivo: só encolhe o teclado padrão (não o modo IHM/touch) */
 @media (max-width: 600px) {
-  .virtual-keyboard-wrapper:not(.virtual-keyboard-large) .virtual-keyboard-theme .hg-button {
+  .virtual-keyboard-wrapper:not(.virtual-keyboard-large):not(.virtual-keyboard-ihm) .virtual-keyboard-theme .hg-button {
     height: 32px;
     min-width: 26px;
     font-size: 14px;
   }
 
-  .virtual-keyboard-wrapper:not(.virtual-keyboard-large) .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
+  .virtual-keyboard-wrapper:not(.virtual-keyboard-large):not(.virtual-keyboard-ihm) .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
     min-width: 120px;
   }
 }
@@ -326,5 +332,69 @@ body.menu-open .menu-content {
 
   .virtual-keyboard-large .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
     min-width: 220px;
+  }
+}
+
+/* ===== Teclado IHM (touch, um pouco mais baixo que large) ===== */
+.virtual-keyboard-wrapper.virtual-keyboard-ihm {
+  padding: 8px 14px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-theme .hg-row {
+  margin-bottom: 10px;
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-theme .hg-button {
+  height: 86px;
+  min-width: 66px;
+  font-size: 28px;
+  font-weight: 600;
+  border-radius: 10px;
+  border-width: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
+  min-width: 250px;
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-theme .hg-button[data-skbtn="{enter}"] {
+  min-width: 108px;
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-theme .hg-button[data-skbtn="{bksp}"] {
+  min-width: 92px;
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-theme .hg-button[data-skbtn="{shift}"] {
+  min-width: 96px;
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-header {
+  padding: 6px 10px 8px 10px;
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-header span {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.virtual-keyboard-ihm .virtual-keyboard-close {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  font-size: 20px;
+}
+
+@media (max-width: 600px) {
+  .virtual-keyboard-ihm .virtual-keyboard-theme .hg-button {
+    height: 76px;
+    min-width: 58px;
+    font-size: 26px;
+  }
+
+  .virtual-keyboard-ihm .virtual-keyboard-theme .hg-button[data-skbtn="{space}"] {
+    min-width: 200px;
   }
 }

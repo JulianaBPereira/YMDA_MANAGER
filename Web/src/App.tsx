@@ -18,14 +18,18 @@ import LeitorIHM from "./Pages/IHM/Leitor";
 import OperacaoIHM from "./Pages/IHM/Operacao";
 import LeitorFinalizarIHM from "./Pages/IHM/LeitorFinalizar";
 import FinalizarProducaoIHM from "./Pages/IHM/FinalizarProducao";
+import IhmNavigationPersistence from "./Components/IhmNavigationPersistence";
+import IhmEntryRedirect from "./Components/IhmEntryRedirect";
 
 
 function App() {
   return (
+    <>
+    <IhmNavigationPersistence />
     <Routes>
       {/* Rotas públicas */}
-      <Route path="/IHM" element={<Navigate to="/ihm/login" replace />} />
-      <Route path="/ihm" element={<Navigate to="/ihm/login" replace />} />
+      <Route path="/IHM" element={<IhmEntryRedirect />} />
+      <Route path="/ihm" element={<IhmEntryRedirect />} />
       <Route path="/ihm/login" element={<LoginIHM />} />
       <Route path="/login" element={<Navigate to="/admin" replace />} />
       <Route path="/admin" element={<LoginAdmin />} />
@@ -141,6 +145,7 @@ function App() {
       {/* Redireciona rotas não encontradas */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
 

@@ -1,11 +1,11 @@
-import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
   onlyAdmin?: boolean;
   allowedRoles?: string[];
-  redirectTo?: string; // fallback when not authenticated/authorized
+  redirectTo?: string;
 };
 
 export default function ProtectedRoute(props: ProtectedRouteProps) {
@@ -13,27 +13,14 @@ export default function ProtectedRoute(props: ProtectedRouteProps) {
     children,
     onlyAdmin = false,
     allowedRoles,
-    redirectTo = "/login",
+    redirectTo = "/admin",
   } = props;
   const location = useLocation();
-
-  // Obtém usuário do localStorage (compatível com api.ts)
-  let user: { role?: string } | null = null;
-  if (typeof window !== "undefined") {
-    try {
-      const userStr = window.localStorage.getItem("user");
-      if (userStr) {
-        user = JSON.parse(userStr);
-      }
-    } catch {
-      user = null;
-    }
-  }
+  const { user } = useAuth();
 
   const isAuthenticated = !!user;
   const role = (user?.role || "").toString();
 
-  // Regras de autorização
   let authorized = isAuthenticated;
   if (authorized && onlyAdmin) {
     authorized = role === "admin" || role === "master";
@@ -48,4 +35,3 @@ export default function ProtectedRoute(props: ProtectedRouteProps) {
 
   return <>{children}</>;
 }
-
