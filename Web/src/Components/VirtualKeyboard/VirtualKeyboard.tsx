@@ -7,6 +7,7 @@ const VirtualKeyboard = () => {
   const {
     isKeyboardVisible,
     inputValue,
+    activeInputRef,
     hideKeyboard,
     setInputValue,
     onChangeCallback,
@@ -18,12 +19,14 @@ const VirtualKeyboard = () => {
   const keyboardRef = useRef<any>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
-  // Sincroniza o valor apenas quando o teclado se torna visível (abertura)
+  // Sincroniza ao abrir o teclado ou ao trocar de campo (ex.: usuário → senha)
   useEffect(() => {
     if (isKeyboardVisible && keyboardRef.current) {
       keyboardRef.current.setInput(inputValue)
     }
-  }, [isKeyboardVisible])
+    // inputValue omitido de propósito: só resetar ao mudar activeInputRef, não a cada tecla
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isKeyboardVisible, activeInputRef])
 
   const handleChange = useCallback((input: string) => {
     setInputValue(input)
